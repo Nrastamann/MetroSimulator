@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+use crate::station::Station;
+
 pub struct MapGenerationPlugin;
 
 impl Plugin for MapGenerationPlugin{
@@ -17,15 +19,8 @@ fn spawn_map(
         commands.spawn((
             Mesh2d(meshes.add(Circle::new(25.))),
             MeshMaterial2d(materials.add(Color::hsl(20., 0.5, 0.5))),
-            Transform::from_xyz(i as f32 * 100., (i as f32).powi(2) * 20., 0.)
-        ));
-    }
-
-    for i in -5..0 {
-        commands.spawn((
-            Mesh2d(meshes.add(Circle::new(25.))),
-            MeshMaterial2d(materials.add(Color::hsl(20., 0.5, 0.5))),
-            Transform::from_xyz(i as f32 * 100., -(i as f32).powi(2) * 20., 0.)
+            Transform::from_xyz(i as f32 * 100., (i as f32).powi(2) * 20., 0.),
+            Station
         ));
     }
 }
