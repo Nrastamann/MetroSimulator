@@ -2,6 +2,7 @@ use bevy::prelude::*;
 
 use crate::station::Station;
 
+#[derive(PartialEq)]
 pub struct Line {
     pub stations: Vec<Station>,
     pub curve: Option<CubicCurve<Vec2>>,
@@ -19,8 +20,8 @@ impl Line {
         }
     }
 
-    pub fn add_station(&mut self, station: Station) {
-        self.stations.push(station);
+    pub fn add_station(&mut self, station: Station, place: usize) {
+        self.stations.insert(place, station);
         
         self.curve = CubicCardinalSpline::new_catmull_rom(self.stations
             .iter().map(|station| station.position).collect::<Vec<Vec2>>())
