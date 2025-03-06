@@ -8,8 +8,10 @@ impl Plugin for StationPlugin {
     }
 }
 
-#[derive(Component)]
-pub struct Station;
+#[derive(Component, Copy, Clone)]
+pub struct Station {
+    pub position: Vec2,
+}
 
 fn hover_select(
     mut stations: Query<&mut Transform, With<Station>>,
