@@ -23,7 +23,9 @@ fn spawn_map(
             selected: false
         };
 
-        ev_spawn_station.send(SpawnStationEvent { position, station });
+        let color = Color::hsl(50., 0.5, 0.5);
+
+        ev_spawn_station.send(SpawnStationEvent { position, station, color });
         stations.push(station);
     }
 

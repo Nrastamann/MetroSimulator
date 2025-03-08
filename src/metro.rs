@@ -31,7 +31,7 @@ fn draw_curves(
         let resolution = 100 * curve.segments().len();
         gizmos.linestrip(
             curve.iter_positions(resolution).map(|pt| pt.extend(0.0)),
-            Color::hsl(20., 0.5, 0.5)
+            line.color
         );
     }
 }

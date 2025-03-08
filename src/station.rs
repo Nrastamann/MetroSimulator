@@ -1,3 +1,5 @@
+use std::default;
+
 use bevy::prelude::*;
 
 use crate::{cursor::CursorPosition, metro::Metro};
@@ -22,6 +24,7 @@ pub struct Station {
 pub struct SpawnStationEvent {
     pub position: Vec2,
     pub station: Station,
+    pub color: Color,
 }
 
 fn spawn_station(
@@ -33,7 +36,7 @@ fn spawn_station(
     for ev in ev_spawn_station.read() {
         commands.spawn((
             Mesh2d(meshes.add(Circle::new(25.))),
-            MeshMaterial2d(materials.add(Color::hsl(20., 0.5, 0.5))),
+            MeshMaterial2d(materials.add(ev.color)),
             Transform::from_translation(ev.position.extend(0.0)),
             ev.station
         ));
@@ -56,11 +59,20 @@ fn hover_select(
     }
 }
 
+#[derive(Default)]
+enum BuildingMode {
+    #[default]
+    Prolong,
+    NewLine,
+}
+
 #[derive(Default, Resource)]
 struct StationBuilder {
-    has_selected: bool,
-    attach_to_line: usize,
-    place: usize
+    is_building: bool,
+    building_mode: BuildingMode,
+    line_to_attach_to: usize,
+    place: usize,
+    parent_station: Option<Station>,
 }
 
 fn build_new(
@@ -76,9 +88,16 @@ fn build_new(
             if station.selected {
                 for i in 0..metro.lines.len() {
                     if let Some(place) = metro.lines[i].stations.iter().position(|s| s.position == station.position) {
-                        builder.attach_to_line = i;
+                        builder.line_to_attach_to = i;
                         builder.place = place;
-                        builder.has_selected = true;
+                        builder.is_building = true;
+                        builder.parent_station = Some(*station);
+                        if place == 0 || place == metro.lines[i].stations.len()- 1 {
+                            builder.building_mode = BuildingMode::Prolong;
+                        }
+                        else {
+                            builder.building_mode = BuildingMode::NewLine;
+                        }
                         break;
                     }
                 }
@@ -87,22 +106,39 @@ fn build_new(
         }
     }
 
-    if mouse.just_released(MouseButton::Left) && builder.has_selected {
+    if mouse.just_released(MouseButton::Left) && builder.is_building {
         let station = Station {
             position: cursor_position.0,
             selected: false
         };
 
-        metro.lines[builder.attach_to_line].add_station(
-            station,
-            builder.place
-        );
+        let color; 
+
+        match builder.building_mode {
+            BuildingMode::NewLine => {
+                metro.add_line(vec![builder.parent_station.unwrap(), station]);
+                color = Color::hsl(20., 0.5, 0.5);
+            },
+            BuildingMode::Prolong => {
+                let place = builder.place;
+                if place == metro.lines[builder.line_to_attach_to].stations.len() - 1 {
+                    metro.lines[builder.line_to_attach_to].push_back(station);
+                }
+                else if place == 0 {
+                    metro.lines[builder.line_to_attach_to].push_front(station);
+                }
+
+                color = Color::hsl(metro.lines[builder.line_to_attach_to].stations.len() as f32 * 10., 0.5, 0.5);
+            }
+        }
 
         ev_spawn_station.send(SpawnStationEvent {
             position: cursor_position.0,
-            station
+            station,
+            color
         });
 
-        builder.has_selected = false;
+        builder.is_building = false;
+        builder.parent_station = None;
     }
 }
