@@ -98,7 +98,7 @@ fn build_new(
                         else {
                             builder.building_mode = BuildingMode::NewLine;
                         }
-                        ev_set_blueprint.send(SetBlueprintColorEvent(Color::WHITE.with_alpha(0.5))); // todo: make color match the line 
+                        ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5))); // todo: make color match the line 
                         break;
                     }
                 }
@@ -145,7 +145,7 @@ fn build_new(
 
         builder.is_building = false;
         builder.parent_station = None;
-        ev_set_blueprint.send(SetBlueprintColorEvent(Color::WHITE.with_alpha(0.0)));
+        ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.0)));
     }
 }
 
@@ -176,7 +176,7 @@ fn check_building_position(
     else {
         builder.is_position_allowed = true;
         if builder.is_building {
-            ev_set_blueprint.send(SetBlueprintColorEvent(Color::WHITE.with_alpha(0.5)));
+            ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)));
         }
     }
 }
