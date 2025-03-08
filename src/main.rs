@@ -9,6 +9,9 @@ use map_generation::MapGenerationPlugin;
 mod station;
 use station::StationPlugin;
 
+mod station_blueprint;
+use station_blueprint::StationBlueprintPlugin;
+
 mod line;
 
 mod metro;
@@ -23,7 +26,7 @@ fn main() {
         .add_plugins(CameraPlugin)
         .add_plugins(CursorPlugin)
         .add_plugins(MapGenerationPlugin)
-        .add_plugins(StationPlugin)
+        .add_plugins((StationPlugin, StationBlueprintPlugin))
         .add_plugins(MetroPlugin)
         .run();
 }

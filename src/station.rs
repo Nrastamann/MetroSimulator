@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, metro::Metro};
+use crate::{cursor::CursorPosition, metro::Metro, station_blueprint::SetBlueprintColorEvent};
 
 pub struct StationPlugin;
 
@@ -8,7 +8,7 @@ impl Plugin for StationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StationBuilder>();
         app.add_event::<SpawnStationEvent>();
-        app.add_systems(Update, (hover_select, build_new, spawn_station));
+        app.add_systems(Update, (hover_select, check_building_position, build_new, spawn_station));
     }
 }
 
@@ -71,6 +71,7 @@ struct StationBuilder { // todo: приудмать, как это переде�
     line_to_attach_to: usize,
     place: usize,
     parent_station: Option<Station>,
+    is_position_allowed: bool,
 }
 
 fn build_new(
@@ -80,6 +81,7 @@ fn build_new(
     mouse: Res<ButtonInput<MouseButton>>,
     mut builder: ResMut<StationBuilder>,
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
+    mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
 ) {
     if mouse.just_pressed(MouseButton::Left) { // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
         for station in stations.iter() {
@@ -96,6 +98,7 @@ fn build_new(
                         else {
                             builder.building_mode = BuildingMode::NewLine;
                         }
+                        ev_set_blueprint.send(SetBlueprintColorEvent(Color::WHITE.with_alpha(0.5))); // todo: make color match the line 
                         break;
                     }
                 }
@@ -104,40 +107,76 @@ fn build_new(
         }
     }
 
-    if mouse.just_released(MouseButton::Left) && builder.is_building { // строим
-        let station = Station {
-            position: cursor_position.0,
-            selected: false
-        };
-
-        let color; 
-
-        match builder.building_mode {
-            BuildingMode::NewLine => {
-                metro.add_line(vec![builder.parent_station.unwrap(), station]);
-                color = metro.lines[metro.lines.len()-1].color;
-            },
-            BuildingMode::Prolong => {
-                let place = builder.place;
-                let line = &mut metro.lines[builder.line_to_attach_to];
-                if place == line.stations.len() - 1 {
-                    line.push_back(station);
+    if mouse.just_released(MouseButton::Left)
+    && builder.is_building { // строим
+        if builder.is_position_allowed {
+            let station = Station {
+                position: cursor_position.0,
+                selected: false
+            };
+    
+            let color; 
+    
+            match builder.building_mode {
+                BuildingMode::NewLine => {
+                    metro.add_line(vec![builder.parent_station.unwrap(), station]);
+                    color = metro.lines[metro.lines.len()-1].color;
+                },
+                BuildingMode::Prolong => {
+                    let place = builder.place;
+                    let line = &mut metro.lines[builder.line_to_attach_to];
+                    if place == line.stations.len() - 1 {
+                        line.push_back(station);
+                    }
+                    else if place == 0 {
+                        line.push_front(station);
+                    }
+    
+                    color = line.color;
                 }
-                else if place == 0 {
-                    line.push_front(station);
-                }
-
-                color = line.color;
             }
+    
+            ev_spawn_station.send(SpawnStationEvent {
+                position: cursor_position.0,
+                station,
+                color
+            });
         }
-
-        ev_spawn_station.send(SpawnStationEvent {
-            position: cursor_position.0,
-            station,
-            color
-        });
 
         builder.is_building = false;
         builder.parent_station = None;
+        ev_set_blueprint.send(SetBlueprintColorEvent(Color::WHITE.with_alpha(0.0)));
+    }
+}
+
+fn check_building_position(
+    cursor_position: Res<CursorPosition>,
+    q_stations: Query<(&Transform, &Station)>,
+    mut builder: ResMut<StationBuilder>,
+    mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
+) {
+    if q_stations.iter().len() <= 0 {
+        return;
+    }
+
+    let sorted: Vec<(&Transform, &Station)> = q_stations.iter()
+        .sort_by::<&Transform>(|t1, t2| {
+            t1.translation.distance(cursor_position.0.extend(0.0))
+                .total_cmp(&t2.translation.distance(cursor_position.0.extend(0.0)))
+        }).collect();
+
+    let (closest, _) = sorted[0];
+
+    if closest.translation.distance(cursor_position.0.extend(0.0)) <= 100.0 {
+        builder.is_position_allowed = false;
+        if builder.is_building {
+            ev_set_blueprint.send(SetBlueprintColorEvent(Color::srgba(1.0, 0.0, 0.0, 0.5)));
+        }
+    }
+    else {
+        builder.is_position_allowed = true;
+        if builder.is_building {
+            ev_set_blueprint.send(SetBlueprintColorEvent(Color::WHITE.with_alpha(0.5)));
+        }
     }
 }
