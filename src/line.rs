@@ -1,4 +1,5 @@
 use bevy::prelude::*;
+use rand::prelude::*;
 
 use crate::station::Station;
 
@@ -21,12 +22,12 @@ impl Line {
             .iter().map(|station| station.position).collect::<Vec<Vec2>>())
             .to_curve().ok(); 
         
-        let length = new_stations.len() as f32;
+        let mut rng = rand::rng();    
 
         Self {
             stations: new_stations,
             curve,
-            color: Color::hsl(length * 10., 0.5, 0.5)
+            color: Color::hsl(rng.random_range(0..=36) as f32 * 10., 0.5, 0.5)
         }
     }
 

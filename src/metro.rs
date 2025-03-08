@@ -17,8 +17,11 @@ pub struct Metro {
 }
 
 impl Metro {
-    pub fn add_line(&mut self, stations: Vec<Station>) {
-        self.lines.push(Line::new_from_stations(stations));
+    pub fn add_line(&mut self, stations: Vec<Station>) -> &mut Line {
+        let line = Line::new_from_stations(stations);
+        self.lines.push(line);
+        let index = self.lines.len()-1;
+        &mut self.lines[index]
     }
 }
 

@@ -117,18 +117,19 @@ fn build_new(
         match builder.building_mode {
             BuildingMode::NewLine => {
                 metro.add_line(vec![builder.parent_station.unwrap(), station]);
-                color = Color::hsl(20., 0.5, 0.5);
+                color = metro.lines[metro.lines.len()-1].color;
             },
             BuildingMode::Prolong => {
                 let place = builder.place;
-                if place == metro.lines[builder.line_to_attach_to].stations.len() - 1 {
-                    metro.lines[builder.line_to_attach_to].push_back(station);
+                let line = &mut metro.lines[builder.line_to_attach_to];
+                if place == line.stations.len() - 1 {
+                    line.push_back(station);
                 }
                 else if place == 0 {
-                    metro.lines[builder.line_to_attach_to].push_front(station);
+                    line.push_front(station);
                 }
 
-                color = Color::hsl(metro.lines[builder.line_to_attach_to].stations.len() as f32 * 10., 0.5, 0.5);
+                color = line.color;
             }
         }
 

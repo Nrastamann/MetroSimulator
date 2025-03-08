@@ -14,7 +14,7 @@ fn spawn_map(
     mut metro: ResMut<Metro>,
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
 ) {
-    let mut stations: Vec<Station> = vec![];
+    let line = metro.add_line(vec![]);
 
     for i in 0..5 {
         let position = Vec2::new(i as f32 * 100., (i as f32).powi(2) * 20.);
@@ -23,11 +23,7 @@ fn spawn_map(
             selected: false
         };
 
-        let color = Color::hsl(50., 0.5, 0.5);
-
-        ev_spawn_station.send(SpawnStationEvent { position, station, color });
-        stations.push(station);
+        line.push_back(station);
+        ev_spawn_station.send(SpawnStationEvent { position, station, color: line.color });
     }
-
-    metro.add_line(stations);
 }
