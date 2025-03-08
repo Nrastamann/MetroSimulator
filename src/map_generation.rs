@@ -16,7 +16,7 @@ fn spawn_map(
 ) {
     let line = metro.add_line(vec![]);
 
-    for i in 0..5 {
+    for i in -1..2 {
         let position = Vec2::new(i as f32 * 100., (i as f32).powi(2) * 20.);
         let station = Station {
             position,

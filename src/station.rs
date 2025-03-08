@@ -1,5 +1,3 @@
-use std::default;
-
 use bevy::prelude::*;
 
 use crate::{cursor::CursorPosition, metro::Metro};
@@ -43,7 +41,7 @@ fn spawn_station(
     }
 }
 
-fn hover_select(
+fn hover_select( // просто выделение при наведении на станцию
     mut stations: Query<(&mut Transform, &mut Station)>,
     cursor_position: Res<CursorPosition>,
 ) {
@@ -67,7 +65,7 @@ enum BuildingMode {
 }
 
 #[derive(Default, Resource)]
-struct StationBuilder {
+struct StationBuilder { // todo: приудмать, как это переделать, чтобы было не так убого
     is_building: bool,
     building_mode: BuildingMode,
     line_to_attach_to: usize,
@@ -83,7 +81,7 @@ fn build_new(
     mut builder: ResMut<StationBuilder>,
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
 ) {
-    if mouse.just_pressed(MouseButton::Left) {
+    if mouse.just_pressed(MouseButton::Left) { // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
         for station in stations.iter() {
             if station.selected {
                 for i in 0..metro.lines.len() {
@@ -106,7 +104,7 @@ fn build_new(
         }
     }
 
-    if mouse.just_released(MouseButton::Left) && builder.is_building {
+    if mouse.just_released(MouseButton::Left) && builder.is_building { // строим
         let station = Station {
             position: cursor_position.0,
             selected: false

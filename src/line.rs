@@ -11,13 +11,13 @@ pub struct Line {
 }
 
 impl Line {
-    fn update_curve(&mut self) {
+    fn update_curve(&mut self) { // обновляем точки, по которым строится кривая
         self.curve = CubicCardinalSpline::new_catmull_rom(self.stations
             .iter().map(|station| station.position).collect::<Vec<Vec2>>())
             .to_curve().ok();
     }
 
-    pub fn new_from_stations(new_stations: Vec<Station>) -> Self {
+    pub fn new_from_stations(new_stations: Vec<Station>) -> Self { // новая ветка из вектора станций
         let curve = CubicCardinalSpline::new_catmull_rom(new_stations
             .iter().map(|station| station.position).collect::<Vec<Vec2>>())
             .to_curve().ok(); 

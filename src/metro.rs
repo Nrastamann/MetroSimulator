@@ -25,7 +25,8 @@ impl Metro {
     }
 }
 
-fn draw_curves(
+// todo: переписать, чтобы избавиться от Gizmos
+fn draw_curves( // рисуем линии
     metro: Res<Metro>,
     mut gizmos: Gizmos
 ) {
