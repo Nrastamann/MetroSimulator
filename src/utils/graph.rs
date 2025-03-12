@@ -31,5 +31,6 @@ impl<T> Graph<T> {
         }
 
         self.nodes.insert(position, Node::new(position, connection, data));
+        self.nodes.get_mut(&connection).unwrap().connections.push(position);
     }
 }
