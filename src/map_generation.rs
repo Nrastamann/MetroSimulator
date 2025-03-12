@@ -23,7 +23,7 @@ fn spawn_map(
             selected: false
         };
 
-        line.push_back(station);
+        line.push((position.x.floor() as i32, position.y.floor() as i32));
         ev_spawn_station.send(SpawnStationEvent { position, station, color: line.color });
     }
 }

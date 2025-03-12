@@ -1,5 +1,7 @@
 use bevy::prelude::*;
 
+mod utils;
+
 mod camera;
 use camera::CameraPlugin;
 

@@ -18,6 +18,13 @@ pub struct Station {
     pub selected: bool,
 }
 
+impl Station {
+    fn id(self) -> (i32, i32) {
+        (self.position.x.floor() as i32,
+         self.position.y.floor() as i32)
+    }
+}
+
 #[derive(Event)]
 pub struct SpawnStationEvent {
     pub position: Vec2,
@@ -57,20 +64,12 @@ fn hover_select( // просто выделение при наведении н
     }
 }
 
-#[derive(Default)]
-enum BuildingMode {
-    #[default]
-    Prolong,
-    NewLine,
-}
-
 #[derive(Default, Resource)]
 struct StationBuilder { // todo: приудмать, как это переделать, чтобы было не так убого
     is_building: bool,
-    building_mode: BuildingMode,
     line_to_attach_to: usize,
     place: usize,
-    parent_station: Option<Station>,
+    connection: (i32, i32),
     is_position_allowed: bool,
 }
 
@@ -79,6 +78,7 @@ fn build_new(
     mut metro: ResMut<Metro>,
     cursor_position: Res<CursorPosition>,
     mouse: Res<ButtonInput<MouseButton>>,
+    keyboard: Res<ButtonInput<KeyCode>>,
     mut builder: ResMut<StationBuilder>,
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
     mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
@@ -87,18 +87,16 @@ fn build_new(
         for station in stations.iter() {
             if station.selected {
                 for i in 0..metro.lines.len() {
-                    if let Some(place) = metro.lines[i].stations.iter().position(|s| s.position == station.position) {
+                    if let Some(place) = metro.lines[i].points.iter().position(|s| *s == station.id()) {
                         builder.line_to_attach_to = i;
                         builder.place = place;
                         builder.is_building = true;
-                        builder.parent_station = Some(*station);
-                        if place == 0 || place == metro.lines[i].stations.len()- 1 {
-                            builder.building_mode = BuildingMode::Prolong;
-                        }
-                        else {
-                            builder.building_mode = BuildingMode::NewLine;
-                        }
-                        ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5))); // todo: make color match the line 
+                        builder.connection = station.id();
+                        ev_set_blueprint.send( // todo: make color match the line 
+                            SetBlueprintColorEvent(
+                                Color::BLACK.with_alpha(0.5)
+                            )
+                        );
                         break;
                     }
                 }
@@ -117,24 +115,24 @@ fn build_new(
     
             let color; 
     
-            match builder.building_mode {
-                BuildingMode::NewLine => {
-                    metro.add_line(vec![builder.parent_station.unwrap(), station]);
-                    color = metro.lines[metro.lines.len()-1].color;
-                },
-                BuildingMode::Prolong => {
-                    let place = builder.place;
-                    let line = &mut metro.lines[builder.line_to_attach_to];
-                    if place == line.stations.len() - 1 {
-                        line.push_back(station);
-                    }
-                    else if place == 0 {
-                        line.push_front(station);
-                    }
-    
-                    color = line.color;
-                }
+            if keyboard.pressed(KeyCode::ShiftLeft) {
+                metro.add_line(vec![builder.connection, station.id()]);
+                color = metro.lines[metro.lines.len()-1].color;
             }
+            else {
+                let place = builder.place;
+                let line = &mut metro.lines[builder.line_to_attach_to];
+                if place == line.points.len() - 1 {
+                    line.push(station.id());
+                }
+                else {
+                   line.insert(place, station.id());
+                }
+
+                color = line.color;
+            }
+
+            metro.stations.add(builder.connection, station.id(), station);
     
             ev_spawn_station.send(SpawnStationEvent {
                 position: cursor_position.0,
@@ -144,7 +142,6 @@ fn build_new(
         }
 
         builder.is_building = false;
-        builder.parent_station = None;
         ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.0)));
     }
 }
