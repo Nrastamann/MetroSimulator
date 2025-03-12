@@ -64,13 +64,21 @@ fn hover_select( // просто выделение при наведении н
     }
 }
 
+#[derive(Default)]
+enum BuilderAction {
+    Build,
+    Connect { closest: (i32, i32) },
+    #[default]
+    Nothing
+}
+
 #[derive(Default, Resource)]
 struct StationBuilder { // todo: приудмать, как это переделать, чтобы было не так убого
     is_building: bool,
     line_to_attach_to: usize,
     place: usize,
     connection: (i32, i32),
-    is_position_allowed: bool,
+    action: BuilderAction 
 }
 
 fn build_new(
@@ -107,38 +115,51 @@ fn build_new(
 
     if mouse.just_released(MouseButton::Left)
     && builder.is_building { // строим
-        if builder.is_position_allowed {
-            let station = Station {
-                position: cursor_position.0,
-                selected: false
-            };
+        match builder.action {
+            BuilderAction::Build => {
+                let station = Station {
+                    position: cursor_position.0,
+                    selected: false
+                };
+        
+                let color; 
+        
+                if keyboard.pressed(KeyCode::ShiftLeft) {
+                    metro.add_line(vec![builder.connection, station.id()]);
+                    color = metro.lines[metro.lines.len()-1].color;
+                }
+                else {
+                    let place = builder.place;
+                    let line = &mut metro.lines[builder.line_to_attach_to];
+                    if place == line.points.len() - 1 {
+                        line.push(station.id());
+                    }
+                    else {
+                       line.insert(place, station.id());
+                    }
     
-            let color; 
+                    color = line.color;
+                }
     
-            if keyboard.pressed(KeyCode::ShiftLeft) {
-                metro.add_line(vec![builder.connection, station.id()]);
-                color = metro.lines[metro.lines.len()-1].color;
-            }
-            else {
+                metro.stations.add(builder.connection, station.id(), station);
+        
+                ev_spawn_station.send(SpawnStationEvent {
+                    position: cursor_position.0,
+                    station,
+                    color
+                });
+            },
+            BuilderAction::Connect { closest } => {
                 let place = builder.place;
                 let line = &mut metro.lines[builder.line_to_attach_to];
                 if place == line.points.len() - 1 {
-                    line.push(station.id());
+                    line.push(closest);
                 }
                 else {
-                   line.insert(place, station.id());
+                   line.insert(place, closest);
                 }
-
-                color = line.color;
-            }
-
-            metro.stations.add(builder.connection, station.id(), station);
-    
-            ev_spawn_station.send(SpawnStationEvent {
-                position: cursor_position.0,
-                station,
-                color
-            });
+            },
+            _ => {}
         }
 
         builder.is_building = false;
@@ -151,6 +172,7 @@ fn check_building_position(
     q_stations: Query<(&Transform, &Station)>,
     mut builder: ResMut<StationBuilder>,
     mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
+    metro: Res<Metro>,
 ) {
     if q_stations.iter().len() <= 0 {
         return;
@@ -162,16 +184,26 @@ fn check_building_position(
                 .total_cmp(&t2.translation.distance(cursor_position.0.extend(0.0)))
         }).collect();
 
-    let (closest, _) = sorted[0];
+    let (closest_transform, closest_station) = sorted[0];
 
-    if closest.translation.distance(cursor_position.0.extend(0.0)) <= 100.0 {
-        builder.is_position_allowed = false;
+    if closest_transform.translation.distance(cursor_position.0.extend(0.0)) <= 100.0 {
+        let color: Color;
+
+        if metro.lines[builder.line_to_attach_to].points.contains(&closest_station.id()) {
+            builder.action = BuilderAction::Nothing;
+            color = Color::srgba(1.0, 0.0, 0.0, 0.5);
+        }
+        else {
+            builder.action = BuilderAction::Connect { closest: closest_station.id() };
+            color = Color::BLACK.with_alpha(0.5);
+        }
+
         if builder.is_building {
-            ev_set_blueprint.send(SetBlueprintColorEvent(Color::srgba(1.0, 0.0, 0.0, 0.5)));
+            ev_set_blueprint.send(SetBlueprintColorEvent(color));
         }
     }
     else {
-        builder.is_position_allowed = true;
+        builder.action = BuilderAction::Build;
         if builder.is_building {
             ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)));
         }
