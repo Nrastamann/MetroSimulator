@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, metro::Metro, station_blueprint::SetBlueprintColorEvent};
+use crate::{cursor::CursorPosition, metro::Metro, station_blueprint::SetBlueprintColorEvent, GameState};
 
 pub struct StationPlugin;
 
@@ -8,7 +8,7 @@ impl Plugin for StationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StationBuilder>();
         app.add_event::<SpawnStationEvent>();
-        app.add_systems(Update, (hover_select, check_building_position, build_new, spawn_station));
+        app.add_systems(Update, (hover_select, check_building_position, build_new, spawn_station).run_if(in_state(GameState::InGame)));
     }
 }
 
