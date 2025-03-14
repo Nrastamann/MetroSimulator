@@ -1,11 +1,14 @@
 use bevy::{input::mouse::MouseWheel, prelude::*};
+use bevy_lunex::UiSourceCamera;
+
+use crate::GameState;
 
 pub struct CameraPlugin;
 
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_camera);
-        app.add_systems(Update, (move_camera, zoom_camera));
+        app.add_systems(Update, (move_camera, zoom_camera).run_if(in_state(GameState::InGame)));
     }
 }
 
@@ -32,7 +35,7 @@ fn spawn_camera(
     mut commands: Commands,
 ) {
     commands.insert_resource(ClearColor(Color::WHITE));
-    commands.spawn((Camera2d, MainCamera::default()));
+    commands.spawn((Camera2d, MainCamera::default(), UiSourceCamera::<0>));
 }
 
 fn move_camera(
