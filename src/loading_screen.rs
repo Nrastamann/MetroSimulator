@@ -5,13 +5,19 @@ pub struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::MainMenu), MainMenuScene::spawn);
+        app.add_systems(OnEnter(GameState::MainMenu), MainMenuScene::spawn).add_systems(OnExit(GameState::MainMenu), despawn_scene_with::<MainMenuScene>);
     }
 }
 
-const BUTTON_SIZE: f32 = 14.0;
-const BUTTON_GAP: f32 = 3.0;
-const MAIN_MENU_BUTTONS: [&str; 3] = ["Placeholder1", "Новая игра", "Выйти"];
+fn despawn_scene_with<S: Component>(mut commands: Commands, query: Query<Entity, With<S>>){
+    for entity in &query{
+        commands.entity(entity).despawn_recursive();
+    }
+}
+pub const METRO_BLUE_COLOR: Color = Color::srgb(0.09, 0.337, 0.635);
+pub const BUTTON_SIZE: f32 = 14.0;
+pub const BUTTON_GAP: f32 = 11.0;
+pub const MAIN_MENU_BUTTONS: [&str; 3] = ["Новая игра","Настройки", "Выйти"];
 #[derive(Component)]
 pub struct MainMenuScene;
 impl MainMenuScene {
@@ -32,7 +38,7 @@ impl MainMenuScene {
                         .pack(),
                     Sprite::from_image(asset_server.load("check.png")),
                 )); //boundary for panel
-                ui.spawn((UiLayout::solid().size((881., 1600.)).align_x(1.).pack(),))
+                ui.spawn((UiLayout::solid().size((1300., 1941.)).align_x(0.85).pack(),))
                     .with_children(|ui| {
                         ui.spawn((
                             Name::new("Panel"),
@@ -41,25 +47,34 @@ impl MainMenuScene {
                                 .anchor(Anchor::TopCenter)
                                 .size(Rl(105.))
                                 .pack(),
-                            Sprite::from_color(Color::hsv(0., 0., 100.), (1., 1.).into()),
+                            Sprite::from_color(Color::linear_rgba(1., 1., 1.,0.8), (1., 1.).into()),
                         ));
 
                         ui.spawn((UiLayout::window()
+                            .x(Rl(20.0))
                             .y(Rl(11.0))
-                            .size(Rl((105.0, 20.0)))
+                            .size(Rl((80.0, 20.0)))
                             .pack(),))
                             .with_children(|ui| {
                                 // Spawn the logo
                                 ui.spawn((
                                     Name::new("Logo"),
-                                    UiLayout::solid().size((1240.0, 381.0)).pack(),
-                                    Sprite::from_image(asset_server.load("placeholder.png")),
+                                    UiLayout::window().pos((Rh(100.0), Rl(50.0))).anchor(Anchor::Center).pack(),
+                                    UiColor::from(METRO_BLUE_COLOR),
+                                    UiTextSize::from(Rh(60.)),
+                                    Text2d::new("P.O.D.Z.E.M.K.A"),
+                                    TextFont{
+                                        font:asset_server.load("fonts/Metro.ttf"),
+                                        font_size: 64.,
+                                        ..default()
+                                    },
+                                    PickingBehavior::IGNORE,
                                 ));
                             });
 
                         // Spawn button boundary
                         ui.spawn((UiLayout::window()
-                            .pos(Rl((22.0, 33.0)))
+                            .pos(Rl((22.0, 44.0)))
                             .size(Rl((55.0, 34.0)))
                             .pack(),))
                             .with_children(|ui| {
@@ -84,8 +99,8 @@ impl MainMenuScene {
                                             ]),
                                             UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                             UiColor::new(vec![
-                                                (UiBase::id(), Color::WHITE.with_alpha(4.5)),
-                                                (UiHover::id(), Color::WHITE)
+                                                (UiBase::id(), Color::WHITE),
+                                                (UiHover::id(), METRO_BLUE_COLOR)
                                             ]),
                                             Sprite{
                                                 image: asset_server.load("button.png"),
@@ -98,7 +113,7 @@ impl MainMenuScene {
                                                 UiLayout::window().pos((Rh(40.0), Rl(50.0))).anchor(Anchor::CenterLeft).pack(),
                                                 UiColor::new(vec![
                                                     (UiBase::id(), Color::BLACK),
-                                                    (UiHover::id(), Color::BLACK.with_alpha(4.5)),
+                                                    (UiHover::id(), Color::WHITE),
                                                 ]),
                                                 UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                                 UiTextSize::from(Rh(60.0)), 
@@ -117,8 +132,16 @@ impl MainMenuScene {
                                     }).observe(hover_set::<Pointer<Over>, true>).observe(hover_set::<Pointer<Out>,false>);
                                     
                                     match button {
-                                        "Новая игра" => {}
-                                        "Выйти" => {}
+                                        "Новая игра" => {
+                                            button_entity.observe(|_:Trigger<Pointer<Click>>, mut next: ResMut<NextState<GameState>>|{
+                                                next.set(GameState::InGame);
+                                            });
+                                        }
+                                        "Выйти" => {
+                                            button_entity.observe(|_:Trigger<Pointer<Click>>, mut quit: EventWriter<AppExit>|{
+                                                quit.send(AppExit::Success);
+                                            });
+                                        }
                                         "Placeholder1" => {}
                                         _ => {}
                                     }
