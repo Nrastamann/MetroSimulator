@@ -19,6 +19,9 @@ mod line;
 mod metro;
 use metro::MetroPlugin;
 
+mod train;
+use train::TrainPlugin;
+
 mod cursor;
 use cursor::CursorPlugin;
 
@@ -30,5 +33,6 @@ fn main() {
         .add_plugins(MapGenerationPlugin)
         .add_plugins((StationPlugin, StationBlueprintPlugin))
         .add_plugins(MetroPlugin)
+        .add_plugins(TrainPlugin)
         .run();
 }

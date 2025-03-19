@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, metro::Metro, station_blueprint::SetBlueprintColorEvent};
+use crate::{cursor::CursorPosition, metro::Metro, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent};
 
 pub struct StationPlugin;
 
@@ -105,6 +105,7 @@ fn build_new(
     mut builder: ResMut<StationBuilder>,
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
     mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
+    mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
 ) {
     if mouse.just_pressed(MouseButton::Left) { // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
         for station in stations.iter() {
@@ -139,6 +140,7 @@ fn build_new(
                 if keyboard.pressed(KeyCode::ShiftLeft) {
                     metro.add_line(vec![builder.connection, id]);
                     color = metro.lines[metro.lines.len()-1].color;
+                    ev_spawn_train.send(SpawnTrainEvent { line: metro.lines.len()-1 });
                 }
                 else {
                     let place = builder.place;

@@ -33,4 +33,20 @@ impl<T> Graph<T> {
         self.nodes.insert(position, Node::new(position, connection, data));
         self.nodes.get_mut(&connection).unwrap().connections.push(position);
     }
+
+    pub fn get(&mut self, position: (i32, i32)) -> Option<&T> {
+        if !self.nodes.contains_key(&position) {
+            return None
+        } 
+        
+        Some(&self.nodes.get_mut(&position).unwrap().data)
+    }
+
+    pub fn get_mut(&mut self, position: (i32, i32)) -> Option<&mut T> {
+        if !self.nodes.contains_key(&position) {
+            return None
+        } 
+        
+        Some(&mut self.nodes.get_mut(&position).unwrap().data)
+    }
 }

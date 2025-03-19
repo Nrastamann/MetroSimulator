@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{metro::Metro, station::SpawnStationEvent};
+use crate::{metro::Metro, station::SpawnStationEvent, train::SpawnTrainEvent};
 
 pub struct MapGenerationPlugin;
 
@@ -13,6 +13,7 @@ impl Plugin for MapGenerationPlugin{
 fn spawn_map(
     mut metro: ResMut<Metro>,
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
+    mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
 ) {
     let line = metro.add_line(vec![]);
 
@@ -22,4 +23,6 @@ fn spawn_map(
     line.push(pos2);
     ev_spawn_station.send(SpawnStationEvent { position: pos1, connection: pos2, color: line.color });
     ev_spawn_station.send(SpawnStationEvent { position: pos2, connection: pos1, color: line.color });
+
+    ev_spawn_train.send(SpawnTrainEvent { line: 0 });
 }
