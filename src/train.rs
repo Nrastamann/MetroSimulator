@@ -7,7 +7,7 @@ pub struct TrainPlugin;
 impl Plugin for TrainPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnTrainEvent>();
-        app.add_systems(Update, (spawn_train, move_train));
+        app.add_systems(Update, (spawn_train, move_train, switch_train_direction));
     }
 }
 
@@ -16,6 +16,7 @@ pub struct SpawnTrainEvent {
     pub line: usize
 }
 
+#[derive(PartialEq)]
 enum TrainDirection {
     Forwards,
     Backwards
@@ -24,7 +25,7 @@ enum TrainDirection {
 #[derive(Component)]
 pub struct Train {
     line: usize,
-    current_point: usize,
+    current: usize,
     direction: TrainDirection
 }
 
@@ -32,7 +33,7 @@ impl Train {
     fn new(line: usize) -> Self {
         Self {
             line,
-            current_point: 0,
+            current: 0,
             direction: TrainDirection::Forwards
         }
     } 
@@ -72,11 +73,11 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &TrainDirection)
 
     match direction {
         TrainDirection::Forwards => {
-            let index = positions.iter().position(|p| *p == sorted[0]).unwrap()+1;
-            if index >= positions.len() {
-                return (positions[index-1], index-1)
+            let index = positions.iter().position(|p| *p == sorted[0]).unwrap();
+            if index+1 >= positions.len() {
+                return (positions[index], index)
             }
-            return (positions[index], index);
+            return (positions[index+1], index+1);
         },
         TrainDirection::Backwards => {
             let index = positions.iter().position(|p| *p == sorted[0]).unwrap();
@@ -88,6 +89,15 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &TrainDirection)
     }
 }
 
+fn get_current(positions: &Vec<Vec2>, target: &Vec2) -> usize {
+    let mut sorted = positions.clone(); 
+    sorted.sort_by(|pos1, pos2| {
+        pos1.distance(*target).total_cmp(&pos2.distance(*target))
+    });
+
+    positions.iter().position(|p| *p == sorted[0]).unwrap()
+}
+
 fn move_train(
     mut q_train: Query<(&mut Transform, &mut Train)>,
     metro: Res<Metro>,
@@ -95,47 +105,35 @@ fn move_train(
 ) {
     for (mut train_transform, mut train) in q_train.iter_mut() {
         let line = &metro.lines[train.line];
-        let point = line.points[train.current_point];
-        let point = Vec2::new(point.0 as f32, point.1 as f32);
-
         let Some(curve) = &line.curve else { return };
-        let curve_positions: Vec<Vec2> = curve.iter_positions(50 * curve.segments().len()).collect();
-
+        let curve_positions: Vec<Vec2> = curve.iter_positions(32 * curve.segments().len()).collect();
         let (closest_point, closest_index) = get_closest(&curve_positions, &train_transform.translation.truncate(), &train.direction);
+
+        train.current = closest_index;
+
         let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
         train_transform.rotation = train_transform.rotation.lerp(Quat::from_rotation_z(angle), 12.0 * time.delta_secs());
 
-        if point.distance(train_transform.translation.truncate()) > 10. {
-            let direction = curve_positions[closest_index] - train_transform.translation.truncate();
-            train_transform.translation += direction.normalize().extend(0.) * 50.0 * time.delta_secs();
+        let direction = curve_positions[closest_index] - train_transform.translation.truncate();
+        train_transform.translation += direction.normalize().extend(0.) * 100.0 * time.delta_secs();
+    }
+}
 
-            continue;
+fn switch_train_direction(
+    mut q_train: Query<(&Transform, &mut Train)>,
+    metro: Res<Metro>,
+) {
+    for (train_transform, mut train) in q_train.iter_mut() {
+        let line = &metro.lines[train.line];
+        let Some(curve) = &line.curve else { return };
+        let curve_positions: Vec<Vec2> = curve.iter_positions(32 * curve.segments().len()).collect();
+
+        if train.current == 0 && train.direction == TrainDirection::Backwards {
+            train.direction = TrainDirection::Forwards;
         }
-
-        train.current_point = match train.direction {
-            TrainDirection::Forwards => {
-                let index;
-                if train.current_point+1 >= line.points.len() {
-                    train.direction = TrainDirection::Backwards;
-                    index = train.current_point-1;
-                }
-                else {
-                    index = train.current_point+1;
-                }
-                index
-            },
-            TrainDirection::Backwards => {
-                let index;
-                if train.current_point <= 0 {
-                    train.direction = TrainDirection::Forwards;
-                    index = 1;
-                }
-                else {
-                    index = train.current_point-1;
-                }
-                index
-            }
-        };
+        if train.current == curve_positions.len()-1 && train.direction == TrainDirection::Forwards {
+            train.direction = TrainDirection::Backwards;
+        }
     }
 }
