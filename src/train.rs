@@ -89,15 +89,6 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &TrainDirection)
     }
 }
 
-fn get_current(positions: &Vec<Vec2>, target: &Vec2) -> usize {
-    let mut sorted = positions.clone(); 
-    sorted.sort_by(|pos1, pos2| {
-        pos1.distance(*target).total_cmp(&pos2.distance(*target))
-    });
-
-    positions.iter().position(|p| *p == sorted[0]).unwrap()
-}
-
 fn move_train(
     mut q_train: Query<(&mut Transform, &mut Train)>,
     metro: Res<Metro>,
@@ -121,10 +112,10 @@ fn move_train(
 }
 
 fn switch_train_direction(
-    mut q_train: Query<(&Transform, &mut Train)>,
+    mut q_train: Query<&mut Train>,
     metro: Res<Metro>,
 ) {
-    for (train_transform, mut train) in q_train.iter_mut() {
+    for mut train in q_train.iter_mut() {
         let line = &metro.lines[train.line];
         let Some(curve) = &line.curve else { return };
         let curve_positions: Vec<Vec2> = curve.iter_positions(32 * curve.segments().len()).collect();
