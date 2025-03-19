@@ -13,7 +13,8 @@ impl Plugin for TrainPlugin {
 
 #[derive(Event)]
 pub struct SpawnTrainEvent {
-    pub line: usize
+    pub line: usize,
+    pub color: Color,
 }
 
 #[derive(PartialEq)]
@@ -48,7 +49,7 @@ fn spawn_train(
 ) {
     for ev in ev_spawn.read() {
         let mesh = meshes.add(Rectangle::new(30., 15.));
-        let material = materials.add(Color::BLACK);
+        let material = materials.add(ev.color);
         
         let position = metro.lines[ev.line].points[0];
 

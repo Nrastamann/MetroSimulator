@@ -24,5 +24,5 @@ fn spawn_map(
     ev_spawn_station.send(SpawnStationEvent { position: pos1, connection: pos2, color: line.color });
     ev_spawn_station.send(SpawnStationEvent { position: pos2, connection: pos1, color: line.color });
 
-    ev_spawn_train.send(SpawnTrainEvent { line: 0 });
+    ev_spawn_train.send(SpawnTrainEvent { line: 0, color: line.color });
 }
