@@ -110,7 +110,7 @@ fn move_train(
             let direction = curve_positions[closest_index] - train_transform.translation.truncate();
             train_transform.translation += direction.normalize().extend(0.) * 50.0 * time.delta_secs();
 
-            return;
+            continue;
         }
 
         train.current_point = match train.direction {
