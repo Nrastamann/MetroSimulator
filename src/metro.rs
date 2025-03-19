@@ -35,7 +35,7 @@ fn draw_curves( // рисуем линии
         let Some(ref curve) = line.curve else { continue };
         let resolution = 100 * curve.segments().len();
         gizmos.linestrip(
-            curve.iter_positions(resolution).map(|pt| pt.extend(-1.0)),
+            curve.iter_positions(resolution).map(|pt| pt.extend(0.0)),
             line.color
         );
     }

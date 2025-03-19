@@ -63,6 +63,31 @@ fn spawn_train(
     }
 }
 
+fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &TrainDirection) -> (Vec2, usize) {
+    let mut sorted = positions.clone(); 
+
+    sorted.sort_by(|pos1, pos2| {
+        pos1.distance(*target).total_cmp(&pos2.distance(*target))
+    });
+
+    match direction {
+        TrainDirection::Forwards => {
+            let index = positions.iter().position(|p| *p == sorted[0]).unwrap()+1;
+            if index >= positions.len() {
+                return (positions[index-1], index-1)
+            }
+            return (positions[index], index);
+        },
+        TrainDirection::Backwards => {
+            let index = positions.iter().position(|p| *p == sorted[0]).unwrap();
+            if index <= 0 {
+                return (positions[index], index);
+            }
+            return (positions[index-1], index-1);
+        }
+    }
+}
+
 fn move_train(
     mut q_train: Query<(&mut Transform, &mut Train)>,
     metro: Res<Metro>,
@@ -73,9 +98,17 @@ fn move_train(
         let point = line.points[train.current_point];
         let point = Vec2::new(point.0 as f32, point.1 as f32);
 
-        if point.distance(train_transform.translation.truncate()) > 1. {
-            let direction = point - train_transform.translation.truncate();
-            train_transform.translation += direction.normalize().extend(0.) * 100.0 * time.delta_secs();
+        let Some(curve) = &line.curve else { return };
+        let curve_positions: Vec<Vec2> = curve.iter_positions(50 * curve.segments().len()).collect();
+
+        let (closest_point, closest_index) = get_closest(&curve_positions, &train_transform.translation.truncate(), &train.direction);
+        let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
+        let angle = diff.y.atan2(diff.x);
+        train_transform.rotation = train_transform.rotation.lerp(Quat::from_rotation_z(angle), 12.0 * time.delta_secs());
+
+        if point.distance(train_transform.translation.truncate()) > 10. {
+            let direction = curve_positions[closest_index] - train_transform.translation.truncate();
+            train_transform.translation += direction.normalize().extend(0.) * 50.0 * time.delta_secs();
 
             return;
         }
@@ -83,7 +116,6 @@ fn move_train(
         train.current_point = match train.direction {
             TrainDirection::Forwards => {
                 let index;
-
                 if train.current_point+1 >= line.points.len() {
                     train.direction = TrainDirection::Backwards;
                     index = train.current_point-1;
@@ -91,12 +123,10 @@ fn move_train(
                 else {
                     index = train.current_point+1;
                 }
-
                 index
             },
             TrainDirection::Backwards => {
                 let index;
-
                 if train.current_point <= 0 {
                     train.direction = TrainDirection::Forwards;
                     index = 1;
@@ -104,7 +134,6 @@ fn move_train(
                 else {
                     index = train.current_point-1;
                 }
-
                 index
             }
         };

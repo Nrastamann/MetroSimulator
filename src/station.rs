@@ -138,7 +138,7 @@ fn build_new(
                                       cursor_position.0.y.floor() as i32);
                 
                 if keyboard.pressed(KeyCode::ShiftLeft) {
-                    metro.add_line(vec![builder.connection, id]);
+                    metro.add_line(vec![id, builder.connection]);
                     color = metro.lines[metro.lines.len()-1].color;
                     ev_spawn_train.send(SpawnTrainEvent { line: metro.lines.len()-1 });
                 }
