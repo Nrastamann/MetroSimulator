@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::cursor::CursorPosition;
+use crate::{cursor::CursorPosition, GameState};
 
 #[derive(Component)]
 pub struct StationBlueprint {
@@ -13,7 +13,7 @@ impl Plugin for StationBlueprintPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SetBlueprintColorEvent>();
         app.add_systems(Startup, init_blueprint);
-        app.add_systems(Update, (stick_to_mouse, toggle_station_blueprint));
+        app.add_systems(Update, (stick_to_mouse, toggle_station_blueprint).run_if(in_state(GameState::InGame)));
     }
 }
 

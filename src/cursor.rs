@@ -9,7 +9,7 @@ impl Plugin for CursorPlugin {
     }
 }
 
-#[derive(Default, Resource)]
+#[derive(Default, Resource, Clone)]
 pub struct CursorPosition(pub Vec2);
 
 impl CursorPosition {
