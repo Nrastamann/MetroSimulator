@@ -1,5 +1,9 @@
 use bevy::prelude::*;
+
+mod utils;
+
 use bevy_lunex::UiLunexPlugins;
+
 mod camera;
 use camera::CameraPlugin;
 
@@ -20,6 +24,9 @@ mod line;
 mod metro;
 use metro::MetroPlugin;
 
+mod train;
+use train::TrainPlugin;
+
 mod cursor;
 use cursor::CursorPlugin;
 
@@ -39,6 +46,7 @@ fn main() {
         .add_plugins(MapGenerationPlugin)
         .add_plugins((StationPlugin, StationBlueprintPlugin))
         .add_plugins(MetroPlugin)
+        .add_plugins(TrainPlugin)
         .add_plugins(UiLunexPlugins)
         .add_plugins((MainMenuPlugin, StationUIPlugin))
         .run();
