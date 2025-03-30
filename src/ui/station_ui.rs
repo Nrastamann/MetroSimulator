@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    cursor::CursorPosition, loading_screen::METRO_BLUE_COLOR, metro::Metro, station::Station,
+    ui::main_menu::METRO_BLUE_COLOR, station::Station,
     GameState,
 };
 
@@ -17,7 +17,7 @@ impl Plugin for StationUIPlugin {
 #[derive(Event)]
 pub struct SpawnPopupEvent {
     mouse_pos: Vec2,
-    station: Station,
+//    station: Station,
 }
 
 #[derive(Component)]
@@ -29,7 +29,7 @@ impl PopupMenu {
         mut commands: Commands,
         mut popup_query: Query<Entity, With<PopupMenu>>,
         query_window: Query<&Window>,
-        mut asset_server: Res<AssetServer>,
+        asset_server: Res<AssetServer>,
     ) {
         let window = query_window.single();
         for ev in draw_info.read() {
@@ -205,7 +205,7 @@ fn draw_menu(
                 if let Some(cursor_pos) = window.cursor_position() {
                     draw_popup.send(SpawnPopupEvent {
                         mouse_pos: cursor_pos.clone(),
-                        station: *station,
+//                        station: *station,
                     });
                 } else {
                     panic!("Error: Cursor is not founded");
