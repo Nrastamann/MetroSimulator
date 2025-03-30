@@ -12,11 +12,8 @@ use station::StationPlugin;
 mod station_blueprint;
 use station_blueprint::StationBlueprintPlugin;
 
-mod loading_screen;
-use loading_screen::MainMenuPlugin;
-
-mod station_ui;
-use station_ui::StationUIPlugin;
+mod ui;
+use ui::{MainMenuPlugin, StationUIPlugin};
 
 mod line;
 
@@ -43,6 +40,6 @@ fn main() {
         .add_plugins((StationPlugin, StationBlueprintPlugin))
         .add_plugins(MetroPlugin)
         .add_plugins(UiLunexPlugins)
-        .add_plugins((MainMenuPlugin,StationUIPlugin))
+        .add_plugins((MainMenuPlugin, StationUIPlugin))
         .run();
 }
