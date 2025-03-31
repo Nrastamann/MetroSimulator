@@ -16,11 +16,11 @@ impl Plugin for CameraPlugin {
 }
 
 #[derive(Component)]
-struct MainCamera {
+pub struct MainCamera {
     move_speed: f32,
     max_zoom: f32,
     min_zoom: f32,
-    target_zoom: f32,
+pub    target_zoom: f32,
 }
 
 impl Default for MainCamera {
@@ -89,8 +89,5 @@ fn zoom_camera(
             _ => {}
         }
     }
-
-    ortho.scale = ortho
-        .scale
-        .lerp(camera.target_zoom, 15. * time.delta_secs());
+    ortho.scale = ortho.scale.lerp(camera.target_zoom, 15. * time.delta_secs());
 }
