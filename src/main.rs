@@ -30,6 +30,12 @@ use train::TrainPlugin;
 mod cursor;
 use cursor::CursorPlugin;
 
+mod district;
+use district::DistrictPlugin;
+
+const DISTRICT_CELL_SIZE: f32 =  25.;
+const MAX_DISTRICT_SIZE: usize = 60;
+
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 pub enum GameState {
     #[default]
@@ -40,6 +46,7 @@ pub enum GameState {
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
+        .add_plugins(UiLunexPlugins)
         .init_state::<GameState>()
         .add_plugins(CameraPlugin)
         .add_plugins(CursorPlugin)
