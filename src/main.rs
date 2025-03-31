@@ -2,7 +2,7 @@ use bevy::prelude::*;
 
 mod utils;
 
-use bevy_lunex::UiLunexPlugins;
+use bevy_lunex::{UiLunexDebugPlugin, UiLunexPlugins};
 
 mod camera;
 use camera::CameraPlugin;
@@ -37,6 +37,8 @@ pub enum GameState {
     InGame,
 }
 
+
+
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -48,6 +50,6 @@ fn main() {
         .add_plugins(MetroPlugin)
         .add_plugins(TrainPlugin)
         .add_plugins(UiLunexPlugins)
-        .add_plugins((MainMenuPlugin, StationUIPlugin))
+        .add_plugins((MainMenuPlugin, StationUIPlugin,UiLunexDebugPlugin::<0, 0>))
         .run();
 }

@@ -1,190 +1,193 @@
 use bevy::prelude::*;
+use bevy_lunex::*;
 
-use crate::{
-    ui::main_menu::METRO_BLUE_COLOR, station::Station,
-    GameState,
-};
+use crate::{station::Station, ui::main_menu::METRO_BLUE_COLOR, GameState};
 
+pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
+pub const OFFSET: f32 = 30.;
 pub struct StationUIPlugin;
 
 impl Plugin for StationUIPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnPopupEvent>();
-        app.add_systems(Update, draw_menu.run_if(in_state(GameState::InGame)));
-        app.add_systems(Update, PopupMenu::draw_popup);
+        app.add_systems(
+            Update,
+            (draw_menu, PopupMenu::draw_popup).run_if(in_state(GameState::InGame)),
+        );
     }
 }
+
 #[derive(Event)]
 pub struct SpawnPopupEvent {
     mouse_pos: Vec2,
-//    station: Station,
+    station: Station,
 }
 
 #[derive(Component)]
-pub struct PopupMenu;
+pub struct PopupMenu {
+    pub station: (i32, i32),
+}
 
 impl PopupMenu {
     fn draw_popup(
         mut draw_info: EventReader<SpawnPopupEvent>,
         mut commands: Commands,
-        mut popup_query: Query<Entity, With<PopupMenu>>,
+        //        mut popup_query: Query<Entity, With<PopupMenu>>,
         query_window: Query<&Window>,
         asset_server: Res<AssetServer>,
     ) {
         let window = query_window.single();
         for ev in draw_info.read() {
-            for entity in popup_query.iter_mut() {
-                commands.entity(entity).despawn_recursive();
-            }
-
             let rel_pos = (
                 (ev.mouse_pos.x / window.width()).abs(),
                 (ev.mouse_pos.y / window.height()).abs(),
             );
-
             commands
                 .spawn((
-                    Node {
-                        position_type: PositionType::Absolute,
-                        top: Val::Percent(rel_pos.1 * 100.),
-                        left: Val::Percent(rel_pos.0 * 100.),
-
-                        width: Val::Percent(35.0),
-                        height: Val::Percent(20.0),
-                        ..default()
+                    UiLayoutRoot::new_2d(),
+                    UiFetchFromCamera::<0>,
+                    PopupMenu {
+                        station: ev.station.id,
                     },
-                    BackgroundColor(Color::BLACK),
-                    PopupMenu,
                 ))
                 .with_children(|ui| {
-                    //NAME ROOT NODE
                     ui.spawn((
-                        Node {
-                            position_type: PositionType::Absolute,
-                            top: Val::Percent(0.),
-                            left: Val::Percent(0.),
-
-                            width: Val::Percent(100.),
-                            height: Val::Percent(30.),
-
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-
-                            ..default()
-                        },
-                        BackgroundColor(METRO_BLUE_COLOR),
-                    )).with_children(|ui|{
+                        Name::new("Station Menu"),
+                        UiLayout::window()
+                            .pos(Rl((rel_pos.0 * 100., rel_pos.1 * 100.)))
+                            .size(Rl((40., 30.)))
+                            .pack(),
+                        Sprite::from_color(Color::BLACK, Vec2::new(1., 1.)),
+                    ))
+                    .with_children(|ui| {
                         ui.spawn((
-                           Text::new(//ev.station.name
-                            "STATION NAME"
-                           ), 
-                           TextFont{
-                            font: asset_server.load("fonts/Metro.ttf"),
-                            font_size: 18.,
-                            ..default()
-                           },
-                           TextColor(Color::WHITE),
-                        ));
-                    });
-                    
-                    //BORDER
-                    
-                    ui.spawn((
-                        Node{
-                            position_type: PositionType::Absolute,
-                            top: Val::Percent(30.),
-                            left: Val::Percent(0.),
+                            Name::new("Name boundary"),
+                            UiLayout::window()
+                                .size(Rl((100., 30.)))
+                                .pos(Rl((50.0, 15.0)))
+                                .anchor(Anchor::Center)
+                                .pack(),
+                            Sprite::default(),
+                            UiColor::from(METRO_BLUE_COLOR),
+                        ))
+                        .with_children(|ui| {
+                            ui.spawn((
+                                Name::new("Station name"),
+                                UiLayout::window()
+                                    //37.5
+                                    .pos((Rl(50.0), Rh(50.0)))
+                                    .anchor(Anchor::Center)
+                                    .pack(),
+                                UiColor::from(Color::WHITE),
+                                UiTextSize::from(Rh(100.)),
+                                Text2d::new("STATION NAME"),
+                                TextFont {
+                                    font: asset_server.load("fonts/ofont.ru_FreeSet.ttf"),
+                                    font_size: 64.,
+                                    ..default()
+                                },
+                                PickingBehavior::IGNORE,
+                            ));
+                        });
 
-                            width: Val::Percent(100.),
-                            height: Val::Percent(1.),
-
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-
-                            ..default()
-                        },
-                        BackgroundColor(Color::BLACK),
-                    ));
-
-                    //STATS ROOT NODE
-                    
-                    ui.spawn((
-                        Node {
-                            position_type: PositionType::Absolute,
-                            top: Val::Percent(31.),
-                            left: Val::Percent(0.),
-
-                            width: Val::Percent(49.5),
-                            height: Val::Percent(69.),
-
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-
-                            ..default()
-                        },
-                        BackgroundColor(METRO_BLUE_COLOR),
-                    )).with_children(|ui|{
                         ui.spawn((
-                           Text::new(//ev.station.name
-                            "STATS SECTION"
-                           ), 
-                           TextFont{
-                            font: asset_server.load("fonts/Metro.ttf"),
-                            font_size: 18.,
-                            ..default()
-                           },
-                           TextColor(Color::WHITE),
-                        ));
-                    });
-
-                    //BORDER NODE
-
-                    ui.spawn((
-                        Node{
-                            position_type: PositionType::Absolute,
-                            top: Val::Percent(31.),
-                            left: Val::Percent(49.5),
-
-                            width: Val::Percent(1.),
-                            height: Val::Percent(69.),
-
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-
-                            ..default()
-                        },
-                        BackgroundColor(Color::BLACK),
-                    ));
-                    
-                    //BUTTON ROOT NODE
-
-                    ui.spawn((
-                        Node {
-                            position_type: PositionType::Absolute,
-                            top: Val::Percent(31.),
-                            left: Val::Percent(50.5),
-
-                            width: Val::Percent(49.5),
-                            height: Val::Percent(69.),
-
-                            justify_content: JustifyContent::Center,
-                            align_items: AlignItems::Center,
-
-                            ..default()
-                        },
-                        BackgroundColor(METRO_BLUE_COLOR),
-                    )).with_children(|ui|{
+                            Name::new("Stats block"),
+                            UiLayout::window()
+                                .pos(Rl((0., 30.)))
+                                .size(Rl((50., 70.)))
+                                .pack(),
+                            Sprite::default(),
+                            UiColor::from(METRO_BLUE_COLOR),
+                        ))
+                        .with_children(|ui| {
+                            ui.spawn((
+                                Name::new("Name section"),
+                                UiLayout::window().size(Rl((70., 100.))).pack(),
+                            ))
+                            .with_children(|ui| {
+                                let mut offset_stats: f32 = 0.0;
+                                for i in RMB_STATS {
+                                    ui.spawn((
+                                        Name::new(i),
+                                        UiLayout::window()
+                                            .y(offset_stats)
+                                            .size(Rl((100., 20.)))
+                                            .pack(),
+                                    ))
+                                    .with_children(|ui| {
+                                        ui.spawn((
+                                            Name::new("Text"),
+                                            UiLayout::window()
+                                                .pos((Rl(100.), Rl(50.)))
+                                                .anchor(Anchor::CenterRight)
+                                                .pack(),
+                                            UiColor::from(Color::WHITE),
+                                            UiTextSize::from(Rh(80.)),
+                                            Text2d::new(i),
+                                            TextFont {
+                                                font: asset_server
+                                                    .load("fonts/ofont.ru_FreeSet.ttf"),
+                                                font_size: 64.,
+                                                ..default()
+                                            },
+                                            PickingBehavior::IGNORE,
+                                        ));
+                                    });
+                                    offset_stats += OFFSET;
+                                }
+                            });
+                            ui.spawn((
+                                Name::new("Values section"),
+                                UiLayout::window().x(Rl(70.)).size(Rl((30., 100.))).pack(),
+                            ))
+                            .with_children(|ui| {
+                                let mut offset_stats: f32 = 0.;
+                                for i in RMB_STATS {
+                                    ui.spawn((
+                                        Name::new(i),
+                                        UiLayout::window()
+                                            .y(offset_stats)
+                                            .size(Rl((100., 20.)))
+                                            .pack(),
+                                    ))
+                                    .with_children(|ui| {
+                                        ui.spawn((
+                                            Name::new("Text"),
+                                            UiLayout::window()
+                                                .pos((Rl(50.), Rl(50.)))
+                                                .anchor(Anchor::Center)
+                                                .pack(),
+                                            UiColor::from(Color::WHITE),
+                                            UiTextSize::from(Rh(80.)),
+                                            Text2d::new("42"),
+                                            TextFont {
+                                                font: asset_server
+                                                    .load("fonts/ofont.ru_FreeSet.ttf"),
+                                                font_size: 64.,
+                                                ..default()
+                                            },
+                                            PickingBehavior::IGNORE,
+                                        ));
+                                    });
+                                    offset_stats += OFFSET;
+                                }
+                            });
+                        });
                         ui.spawn((
-                           Text::new(//ev.station.name
-                            "LINES SECTION"
-                           ), 
-                           TextFont{
-                            font: asset_server.load("fonts/Metro.ttf"),
-                            font_size: 18.,
-                            ..default()
-                           },
-                           TextColor(Color::WHITE),
-                        ));
+                            Name::new("Lines block"),
+                            UiLayout::window()
+                                .pos(Rl((50., 30.)))
+                                .size(Rl((50., 70.)))
+                                .pack(),
+                            Sprite::default(),
+                            UiColor::from(METRO_BLUE_COLOR),
+                        ))
+                        .with_children(|ui| {
+                            ui.spawn((
+                                Name::new("Current lines block"),
+                                UiLayout::window().size(Rl((100., 70.))).pack(),
+                            ));
+                        });
                     });
                 });
         }
@@ -205,7 +208,7 @@ fn draw_menu(
                 if let Some(cursor_pos) = window.cursor_position() {
                     draw_popup.send(SpawnPopupEvent {
                         mouse_pos: cursor_pos.clone(),
-//                        station: *station,
+                        station: station.clone(),
                     });
                 } else {
                     panic!("Error: Cursor is not founded");
