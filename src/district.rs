@@ -15,8 +15,7 @@ impl Plugin for DistrictPlugin {
         app.add_systems(Update, (
             grow_districts
                 .run_if(on_timer(Duration::from_millis(100))),
-            test_draw_district
-                .run_if(on_timer(Duration::from_millis(1000)))));
+            test_draw_district));
     }
 }
 
@@ -40,11 +39,6 @@ impl DistrictType {
 pub struct DistrictCell {
     population: u32,
     max_population: u32,
-} 
-
-#[derive(Component)]
-pub struct DistrictBorderCell {
-    of_completed_district: bool,
 }
 
 #[derive(Clone, PartialEq)]
@@ -173,17 +167,10 @@ fn grow_districts(
 }
 
 fn test_draw_district(
-    mut district_map: ResMut<DistrictMap>,
-    q_district_border_cells: Query<(Entity, &DistrictBorderCell)>,
-    mut commands: Commands, 
-    mut meshes: ResMut<Assets<Mesh>>,
-    mut materials: ResMut<Assets<ColorMaterial>>,
+    district_map: Res<DistrictMap>,
+    mut gizmos: Gizmos, 
 ) {
-    for (e_border_cell, _) in q_district_border_cells.iter().filter(|(_, cell)| !cell.of_completed_district) {
-        commands.entity(e_border_cell).despawn();
-    }
-
-    for district in district_map.districts.clone().iter().filter(|dist| !dist.is_spawned_complete) {
+    for district in district_map.districts.clone().iter() {
         let mut border_points: Vec<Vec2> = vec![]; 
         for cell_key in district.cell_keys.iter() {
             if let Some(_cell) = district_map.cells.get(cell_key) {
@@ -197,18 +184,7 @@ fn test_draw_district(
             }
         }
         for point in border_points.iter() {
-            let mesh = meshes.add(Circle::new(5.));
-            let material = materials.add(district.district_type.color());
-            commands.spawn((
-                Mesh2d(mesh),
-                MeshMaterial2d(material),
-                Transform::from_translation(point.extend(-1.0)),
-                DistrictBorderCell { of_completed_district: district.is_completed }
-            ));
-        }
-        if district.is_completed {
-            let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
-            district_map.districts[index].is_spawned_complete = true;
+            gizmos.rect_2d(Isometry2d::from_xy(point.x, point.y), Vec2::splat(2.), district.district_type.color());
         }
     }
 }
