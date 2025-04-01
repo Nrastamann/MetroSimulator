@@ -51,7 +51,8 @@ struct District {
     is_completed: bool,
     derivatives_amount: u32,
     is_fertile: bool,
-    cell_keys: Vec<(i32, i32)>
+    cell_keys: Vec<(i32, i32)>,
+    max_size: usize,
 }
 
 impl Default for District {
@@ -61,7 +62,8 @@ impl Default for District {
             is_completed: false,
             derivatives_amount: 0,
             is_fertile: true,
-            cell_keys: vec![]
+            cell_keys: vec![],
+            max_size: rand::random_range(0..40) + MAX_DISTRICT_SIZE
         }
     }
 }
@@ -160,7 +162,7 @@ fn grow_districts(
     mut district_map: ResMut<DistrictMap>,
 ) {
     for district in district_map.districts.clone().iter().filter(|&dist| !dist.is_completed) {
-        if district.cell_keys.len() >= MAX_DISTRICT_SIZE {
+        if district.cell_keys.len() >= district.max_size {
             let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
             district_map.districts[index].is_completed=true;
             return;
