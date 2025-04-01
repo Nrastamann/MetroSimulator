@@ -88,13 +88,13 @@ fn zoom_camera(
                 }
                 if ev.y < 0.0 && camera.target_zoom + 0.25 <= camera.max_zoom {
                     camera.target_zoom += 0.25;
-                    let popup = popup_q.get_single();
-                    match popup {
-                        Ok(popup_e) => {
-                            commands.entity(popup_e.0).despawn_recursive();
-                        }
-                        Err(_) => {}
+                }
+                let popup = popup_q.get_single();
+                match popup {
+                    Ok(popup_e) => {
+                        commands.entity(popup_e.0).despawn_recursive();
                     }
+                    Err(_) => {}
                 }
             }
             _ => {}

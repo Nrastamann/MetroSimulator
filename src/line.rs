@@ -17,6 +17,7 @@ impl Plugin for MetroLinePlugin {
 
 #[derive(PartialEq)]
 pub struct MetroLine {
+    pub name: String,
     pub id: usize,
     pub stations: LinkedList<Station>,
     pub curve: Option<CubicCurve<Vec2>>,
@@ -43,6 +44,8 @@ impl MetroLine {
         }
 
         Self {
+            name: LINE_NAMES[rand::rng().random_range(0..9)].to_string(),
+            points: new_points,
             id,
             stations,
             curve,

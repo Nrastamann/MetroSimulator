@@ -8,7 +8,7 @@ use crate::{
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
 pub const RMB_BUTTONS: [&str; 2] = ["Новая станция", "Новая линия"];
-pub const OFFSET: f32 = 30.;
+pub const OFFSET: f32 = 20.;
 pub struct StationUIPlugin;
 
 impl Plugin for StationUIPlugin {
@@ -24,7 +24,8 @@ impl Plugin for StationUIPlugin {
 #[derive(Event)]
 pub struct SpawnPopupEvent {
     mouse_pos: Vec2,
-    station: Station,
+    station: (i32,i32),
+    name: String,
 }
 
 #[derive(Component)]
@@ -42,6 +43,7 @@ impl PopupMenu {
     ) {
         let window = query_window.single();
         for ev in draw_info.read() {
+            let station_e = &ev.name;
             let rel_pos = (
                 (ev.mouse_pos.x / window.width()).abs(),
                 (ev.mouse_pos.y / window.height()).abs(),
@@ -51,7 +53,7 @@ impl PopupMenu {
                     UiLayoutRoot::new_2d(),
                     UiFetchFromCamera::<0>,
                     PopupMenu {
-                        station: ev.station.id,
+                        station: ev.station,
                     },
                 ))
                 .with_children(|ui| {
@@ -84,7 +86,7 @@ impl PopupMenu {
                                     .pack(),
                                 UiColor::from(Color::WHITE),
                                 UiTextSize::from(Rh(100.)),
-                                Text2d::new("STATION NAME"),
+                                Text2d::new(station_e),
                                 TextFont {
                                     font: asset_server.load("fonts/ofont.ru_FreeSet.ttf"),
                                     font_size: 64.,
@@ -114,7 +116,7 @@ impl PopupMenu {
                                     ui.spawn((
                                         Name::new(i),
                                         UiLayout::window()
-                                            .y(offset_stats)
+                                            .y(Rl(offset_stats))
                                             .size(Rl((100., 20.)))
                                             .pack(),
                                     ))
@@ -142,7 +144,7 @@ impl PopupMenu {
                             });
                             ui.spawn((
                                 Name::new("Values section"),
-                                UiLayout::window().x(Rl(70.)).size(Rl((30., 100.))).pack(),
+                                UiLayout::window().x(Rl(70.)).size(Rl((30., 100.))).anchor(Anchor::TopLeft).pack(),
                             ))
                             .with_children(|ui| {
                                 let mut offset_stats: f32 = 0.;
@@ -150,7 +152,7 @@ impl PopupMenu {
                                     ui.spawn((
                                         Name::new(i),
                                         UiLayout::window()
-                                            .y(offset_stats)
+                                            .y(Rl(offset_stats))
                                             .size(Rl((100., 20.)))
                                             .pack(),
                                     ))
@@ -228,6 +230,9 @@ impl PopupMenu {
                                         ui.spawn((
                                             Name::new("Button"),
                                             UiLayout::window().full().pack(),
+                                            Sprite::default(),
+                                            UiHover::new().forward_speed(20.0).backward_speed(4.0),
+                                            UiColor::new(vec![(UiBase::id(), METRO_BLUE_COLOR),(UiHover::id(), METRO_LIGHT_BLUE_COLOR)]),
                                         ))
                                         .with_children(
                                             |ui| {
@@ -237,7 +242,7 @@ impl PopupMenu {
                                                         .anchor(Anchor::Center)
                                                         .pos(Rl((50., 50.)))
                                                         .pack(),
-                                                    UiColor::from(Color::WHITE),
+                                                    UiColor::new(vec![(UiBase::id(), Color::srgb(220.,220.,220.)),(UiHover::id(),Color::WHITE)]),
                                                     UiTextSize::from(Rh(50.)),
                                                     Text2d::new(i),
                                                     TextFont {
@@ -250,7 +255,7 @@ impl PopupMenu {
                                                 ));
                                             },
                                         );
-                                    });
+                                    }).observe(hover_set::<Pointer<Over>, true>).observe(hover_set::<Pointer<Out>,false>);;
                                     offset_buttons += 50.;
                                 }
                             });
@@ -305,7 +310,8 @@ fn draw_menu(
                 if let Some(cursor_pos) = window.cursor_position() {
                     draw_popup.send(SpawnPopupEvent {
                         mouse_pos: cursor_pos.clone(),
-                        station: station.clone(),
+                        station: station.id,
+                        name: station.name.clone(),
                     });
                 } else {
                     panic!("Error: Cursor is not founded");
