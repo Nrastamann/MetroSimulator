@@ -1,4 +1,4 @@
-use std::{collections::HashMap, time::Duration};
+use std::{cmp::Ordering, collections::HashMap, f32::consts::PI, time::Duration};
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
@@ -204,6 +204,51 @@ fn grow_districts(
     }
 }
 
+fn get_angle(center: Vec2, point: Vec2) -> f32 {
+    let diff = point-center;
+    let mut angle = diff.y.atan2(diff.x);
+
+    if angle <= 0.0 {
+        angle += 2.*PI;
+    }
+
+    angle
+}
+
+fn get_distance(center: Vec2, point: Vec2) -> f32 {
+    let diff = point-center;
+    (diff.x.powi(2) + diff.y.powi(2)).sqrt()
+}
+
+fn sort_border_points(
+    border_points: &mut Vec<Vec2>,
+) {
+    let centroid = Vec2::new(
+        border_points.iter().map(|&point| point.x).sum::<f32>() / border_points.len() as f32,
+        border_points.iter().map(|&point| point.y).sum::<f32>() / border_points.len() as f32
+    );
+
+    border_points.sort_by(|&a, &b| {        
+        let angle1 = get_angle(centroid, a);
+        let angle2 = get_angle(centroid, b);
+        
+        let hypotenouse1 = get_distance(centroid, a);
+        let hypotenouse2 = get_distance(centroid, b);
+
+        if angle1 < angle2 {
+            return Ordering::Less;
+        }
+ 
+        if angle1 == angle2 && hypotenouse1 < hypotenouse2 {
+            return Ordering::Less;
+        }
+
+        return Ordering::Greater;
+
+        // (angle1, hypotenouse1).partial_cmp(&(angle2, hypotenouse2)).unwrap()
+    });
+}
+
 fn test_draw_district(
     district_map: Res<DistrictMap>,
     mut gizmos: Gizmos, 
@@ -221,8 +266,18 @@ fn test_draw_district(
                 border_points.push(Vec2::new(cell_key.0 as f32, cell_key.1 as f32) * DISTRICT_CELL_SIZE);
             }
         }
-        for point in border_points.iter() {
-            gizmos.rect_2d(Isometry2d::from_xy(point.x, point.y), Vec2::splat(25.), district.district_type.color());
+        sort_border_points(&mut border_points);
+
+        let Ok(curve) = CubicCardinalSpline::new_catmull_rom(border_points.clone()).to_curve_cyclic() else { return };
+
+        let resolution = 100 * curve.segments().len();
+        gizmos.linestrip(
+            curve.iter_positions(resolution).map(|pt| pt.extend(0.0)),
+            district.district_type.color()
+        );
+
+        for point in district.cell_keys.iter() {
+            gizmos.rect_2d(Isometry2d::from_xy(point.0 as f32 * DISTRICT_CELL_SIZE, point.1 as f32 * DISTRICT_CELL_SIZE), Vec2::splat(5.), district.district_type.color());
         }
     }
 }
