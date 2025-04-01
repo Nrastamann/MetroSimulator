@@ -96,12 +96,27 @@ fn start_new_districts(
         let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
         district_map.districts[index].derivatives_amount+=1;
 
-        let random_type = match rand::random_range(0..3) {
-            0 => DistrictType::Living,
-            1 => DistrictType::Work,
-            2 => DistrictType::Entertainment,
-            _ => DistrictType::Living
-        };
+        let random_type: DistrictType;
+        match district.district_type {
+            DistrictType::Entertainment => {
+                random_type = match rand::random_bool(0.5) {
+                    false => DistrictType::Living,
+                    true => DistrictType::Work,
+                };
+            },
+            DistrictType::Living => {
+                random_type = match rand::random_bool(0.5) {
+                    false => DistrictType::Entertainment,
+                    true => DistrictType::Work,
+                };
+            },
+            DistrictType::Work => {
+                random_type = match rand::random_bool(0.5) {
+                    false => DistrictType::Living,
+                    true => DistrictType::Entertainment,
+                };
+            }
+        }
 
         let mut border_points: Vec<(i32,i32)> = vec![]; 
         for cell_key in district.cell_keys.iter() {
