@@ -1,8 +1,9 @@
 use bevy::prelude::*;
 use rand::prelude::*;
-
+pub const LINE_NAMES: [&str; 10] = ["Ветка1","Ветка2","Ветка3","Ветка4","Ветка5","Ветка6","Ветка7","Ветка8","Ветка9","Ветка10",]; 
 #[derive(PartialEq)]
 pub struct Line {
+    pub name: String,
     pub points: Vec<(i32,i32)>,
     pub curve: Option<CubicCurve<Vec2>>,
     pub color: Color,
@@ -23,6 +24,7 @@ impl Line {
         let mut rng = rand::rng();    
 
         Self {
+            name: LINE_NAMES[rand::rng().random_range(0..9)].to_string(),
             points: new_points,
             curve,
             color: Color::hsl(rng.random_range(0..=36) as f32 * 10., 0.5, 0.5)

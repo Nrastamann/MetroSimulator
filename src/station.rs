@@ -1,7 +1,11 @@
+use std::string;
+
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::{cursor::CursorPosition, metro::Metro, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent,GameState};
 
+pub const STATION_NAMES: [&str; 10] = ["Достоевская","Обводный канал","Озерки","Парнас","Динамо","Автово","Сенная площадь","Купчино","Дыбенко","Звездная"];
 
 pub struct StationPlugin;
 
@@ -18,7 +22,8 @@ pub struct Station {
     pub id: (i32, i32),
     pub selected: bool,
     pub meshes: Vec<Handle<Mesh>>,
-    pub materials: Vec<Handle<ColorMaterial>>
+    pub materials: Vec<Handle<ColorMaterial>>,
+    pub name: String,
 }
 
 #[derive(Event)]
@@ -37,6 +42,7 @@ fn spawn_station(
 ) {
     for ev in ev_spawn_station.read() {
         let mut station = Station {
+            name: STATION_NAMES[rand::rng().random_range(0..9)].to_string(),
             id: ev.position,
             selected: false,
             meshes: vec![],
