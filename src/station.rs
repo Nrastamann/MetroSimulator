@@ -1,6 +1,9 @@
 use std::f32::consts::PI;
 
+use std::string;
+
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::{
     cursor::CursorPosition,
@@ -10,6 +13,8 @@ use crate::{
     train::SpawnTrainEvent,
     GameState,
 };
+
+pub const STATION_NAMES: [&str; 10] = ["Достоевская","Обводный канал","Озерки","Парнас","Динамо","Автово","Сенная площадь","Купчино","Дыбенко","Звездная"];
 
 pub struct StationPlugin;
 
