@@ -37,8 +37,6 @@ pub enum GameState {
     InGame,
 }
 
-
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
@@ -50,6 +48,7 @@ fn main() {
         .add_plugins(MetroPlugin)
         .add_plugins(TrainPlugin)
         .add_plugins(UiLunexPlugins)
-        .add_plugins((MainMenuPlugin, StationUIPlugin,UiLunexDebugPlugin::<0, 0>))
+        .add_plugins((MainMenuPlugin, StationUIPlugin, //UiLunexDebugPlugin::<0, 0>
+            ))
         .run();
 }
