@@ -48,8 +48,6 @@ pub enum GameState {
     InGame,
 }
 
-
-
 fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
