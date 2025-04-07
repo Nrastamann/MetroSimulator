@@ -34,6 +34,16 @@ pub enum Direction {
     Backwards
 }
 
+#[derive(Default, Reflect, GizmoConfigGroup)]
+struct MetroLineGizmos {}
+
+fn config_gizmos(
+    mut config_store: ResMut<GizmoConfigStore>,
+) {
+    let (config, _) = config_store.config_mut::<MetroLineGizmos>();
+    config.line_width = 5.;
+}
+
 
 
 #[derive(Default, Reflect, GizmoConfigGroup)]

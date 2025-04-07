@@ -126,7 +126,8 @@ fn spawn_station(
             StationButton::default(),
             station,
             render_data
-        ));
+        )).add_child(inner_circle);
+
     }
 }
 
