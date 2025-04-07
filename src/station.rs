@@ -151,12 +151,14 @@ fn build_new(
                 builder.line_to_attach_to = line.id;
                 if line.stations.front().unwrap() == selected_station {
                     builder.direction = Direction::Backwards;
+                    builder.action = BuilderAction::Prolong;
                 }
                 else if line.stations.back().unwrap() == selected_station {
                     builder.direction = Direction::Forwards;
+                    builder.action = BuilderAction::Prolong;
                 }
                 else {
-                    return;
+                    builder.action = BuilderAction::NewLine;
                 }
                 builder.is_building = true;
                 builder.connection = selected_station.position;
@@ -172,37 +174,35 @@ fn build_new(
 
     if mouse.just_released(MouseButton::Left)
     && builder.is_building { // строим
+        let position = (
+            cursor_position.0.x.floor() as i32,
+            cursor_position.0.y.floor() as i32
+        );
+
         match builder.action {
             BuilderAction::Prolong => {
-                let color; 
-                let position = (cursor_position.0.x.floor() as i32,
-                                      cursor_position.0.y.floor() as i32);
-                
-                if keyboard.pressed(KeyCode::ShiftLeft) {
-                    let line = metro.add_line(vec![position, builder.connection]);
-                    color = line.color;
-                    ev_spawn_train.send(SpawnTrainEvent { line: line.id, color });
+                let line = &mut metro.lines[builder.line_to_attach_to];
+                match builder.direction {
+                    Direction::Forwards => line.push_back(position),
+                    Direction::Backwards => line.push_front(position)
                 }
-                else {
-                    let line = &mut metro.lines[builder.line_to_attach_to];
-                    match builder.direction {
-                        Direction::Forwards => {
-                            line.push_back(position);
-                        },
-                        Direction::Backwards => {
-                            line.push_front(position);
-                        }
-                    }
-    
-                    color = line.color;
-                }
-            
+
+                ev_spawn_station.send(SpawnStationEvent {
+                    position: cursor_position.as_tuple(),
+                    color: line.color,
+                    connection: builder.connection,
+                });
+            },
+            BuilderAction::NewLine => {
+                let line = metro.add_line(vec![position, builder.connection]);
+                let color = line.color;
+                ev_spawn_train.send(SpawnTrainEvent { line: line.id, color });
                 ev_spawn_station.send(SpawnStationEvent {
                     position: cursor_position.as_tuple(),
                     color,
                     connection: builder.connection,
                 });
-            },
+            }
             // BuilderAction::Connect { closest } => {
             //     let place = builder.place;
             //     let line = &mut metro.lines[builder.line_to_attach_to];
@@ -244,11 +244,11 @@ fn check_building_position(
         let color: Color;
 
         if metro.lines[builder.line_to_attach_to].stations.contains(&closest_station) {
-            builder.action = BuilderAction::Nothing;
+            // builder.action = BuilderAction::Nothing;
             color = Color::srgba(1.0, 0.0, 0.0, 0.5);
         }
         else {
-            builder.action = BuilderAction::Connect { closest: closest_station.position };
+            // builder.action = BuilderAction::Connect { closest: closest_station.position };
             color = Color::BLACK.with_alpha(0.5);
         }
 
@@ -257,7 +257,7 @@ fn check_building_position(
         }
     }
     else {
-        builder.action = BuilderAction::Prolong;
+        // builder.action = BuilderAction::Prolong;
         if builder.is_building {
             ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)));
         }
