@@ -3,7 +3,7 @@ use rand::Rng;
 
 use crate::{
     cursor::CursorPosition,
-    metro::Metro,
+    metro::{Direction, Metro},
     station_blueprint::{Direction, SetBlueprintColorEvent, StationBlueprint},
     train::SpawnTrainEvent,
     GameState,
@@ -43,8 +43,24 @@ impl Plugin for StationPlugin {
 
 #[derive(Component, Clone, PartialEq)]
 pub struct Station {
-    pub id: (i32, i32),
+    pub position: (i32, i32),
+}
+
+impl Station {
+    pub fn new(position: (i32, i32)) -> Self {
+        Self {
+            position,
+        }
+    }
+}
+
+#[derive(Default, Component)]
+pub struct StationButton {
     pub selected: bool,
+}
+
+#[derive(Component)]
+pub struct StationRenderData {
     pub meshes: Vec<Handle<Mesh>>,
     pub materials: Vec<Handle<ColorMaterial>>,
     pub name: String,
@@ -65,36 +81,39 @@ fn spawn_station(
     mut metro: ResMut<Metro>,
 ) {
     for ev in ev_spawn_station.read() {
-        let mut station = Station {
+        let station = Station {
             name: STATION_NAMES[rand::rng().random_range(0..9)].to_string(),
-            id: ev.position,
-            selected: false,
+            position: ev.position,
+        };
+
+        let mut render_data = StationRenderData {
             meshes: vec![],
-            materials: vec![],
+            materials: vec![]
         };
 
         let mesh = meshes.add(Circle::new(25.));
         let material = materials.add(ev.color);
 
-        station.meshes.push(mesh.clone());
-        station.materials.push(material.clone());
+        render_data.meshes.push(mesh.clone());
+        render_data.materials.push(material.clone());
 
-        metro
-            .stations
-            .add(ev.connection, ev.position, station.clone());
-
+        metro.stations.add(ev.connection, ev.position, station.clone());
         commands.spawn((
             Mesh2d(mesh),
             MeshMaterial2d(material),
-            Transform::from_translation(Vec3::new(ev.position.0 as f32, ev.position.1 as f32, 0.0)),
+            Transform::from_translation(Vec3::new(
+                ev.position.0 as f32,
+                ev.position.1 as f32, 0.0
+            )),
+            StationButton::default(),
             station,
+            render_data
         ));
     }
 }
 
-fn hover_select(
-    // просто выделение при наведении на станцию
-    mut stations: Query<(&mut Transform, &mut Station)>,
+fn hover_select( // просто выделение при наведении на станцию
+    mut stations: Query<(&mut Transform, &mut StationButton)>,
     cursor_position: Res<CursorPosition>,
 ) {
     for (mut station_transform, mut station) in stations.iter_mut() {
