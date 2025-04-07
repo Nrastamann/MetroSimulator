@@ -2,11 +2,20 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
+    
     cursor::CursorPosition,
-    metro::{Direction, Metro},
+   
+    metro::{
+        Direction,
+        Metro
+    },
+   
     station_blueprint::{Direction, SetBlueprintColorEvent, StationBlueprint},
+   
     train::SpawnTrainEvent,
+    
     GameState,
+
 };
 
 pub const STATION_NAMES: [&str; 10] = [
@@ -143,10 +152,9 @@ fn hover_select( // просто выделение при наведении н
 
 #[derive(Default)]
 enum BuilderAction {
-    Build,
-    Connect {
-        closest: (i32, i32),
-    },
+    Prolong,
+    NewLine,
+    Connect { closest: (i32, i32) },
     #[default]
     Nothing,
 }
