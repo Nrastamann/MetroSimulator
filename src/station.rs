@@ -1,6 +1,15 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, metro::{Direction, Metro}, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent,GameState};
+use crate::{
+    cursor::CursorPosition,
+    metro::{
+        Direction,
+        Metro
+    },
+    station_blueprint::SetBlueprintColorEvent,
+    train::SpawnTrainEvent,
+    GameState
+};
 
 
 pub struct StationPlugin;
@@ -101,7 +110,8 @@ fn hover_select( // просто выделение при наведении н
 
 #[derive(Default)]
 enum BuilderAction {
-    Build,
+    Prolong,
+    NewLine,
     Connect { closest: (i32, i32) },
     #[default]
     Nothing
@@ -136,11 +146,8 @@ fn build_new(
             .next()
         else { return }; 
         
-        println!("able to get selected");
-        
         for line in metro.lines.iter() {
             if line.stations.contains(&selected_station) {
-                println!("got line of station");
                 builder.line_to_attach_to = line.id;
                 if line.stations.front().unwrap() == selected_station {
                     builder.direction = Direction::Backwards;
@@ -166,15 +173,15 @@ fn build_new(
     if mouse.just_released(MouseButton::Left)
     && builder.is_building { // строим
         match builder.action {
-            BuilderAction::Build => {
+            BuilderAction::Prolong => {
                 let color; 
                 let position = (cursor_position.0.x.floor() as i32,
                                       cursor_position.0.y.floor() as i32);
                 
                 if keyboard.pressed(KeyCode::ShiftLeft) {
-                    metro.add_line(vec![position, builder.connection]);
-                    color = metro.lines[metro.lines.len()-1].color;
-                    ev_spawn_train.send(SpawnTrainEvent { line: metro.lines.len()-1, color });
+                    let line = metro.add_line(vec![position, builder.connection]);
+                    color = line.color;
+                    ev_spawn_train.send(SpawnTrainEvent { line: line.id, color });
                 }
                 else {
                     let line = &mut metro.lines[builder.line_to_attach_to];
@@ -186,9 +193,6 @@ fn build_new(
                             line.push_front(position);
                         }
                     }
-                    // else {
-                    //    line.insert(place, id);
-                    // }
     
                     color = line.color;
                 }
@@ -239,7 +243,7 @@ fn check_building_position(
     if closest_transform.translation.distance(cursor_position.0.extend(0.0)) <= 100.0 {
         let color: Color;
 
-        if metro.lines[builder.line_to_attach_to].points.contains(&closest_station.position) {
+        if metro.lines[builder.line_to_attach_to].stations.contains(&closest_station) {
             builder.action = BuilderAction::Nothing;
             color = Color::srgba(1.0, 0.0, 0.0, 0.5);
         }
@@ -253,7 +257,7 @@ fn check_building_position(
         }
     }
     else {
-        builder.action = BuilderAction::Build;
+        builder.action = BuilderAction::Prolong;
         if builder.is_building {
             ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)));
         }
