@@ -101,10 +101,20 @@ fn spawn_station(
         };
 
         let mesh = meshes.add(Circle::new(25.));
-        let material = materials.add(ev.color);
+        // let material = materials.add(ev.color);
+        let material = materials.add(Color::BLACK);
 
         render_data.meshes.push(mesh.clone());
         render_data.materials.push(material.clone());
+
+        let inner_circle = commands.spawn((
+            Mesh2d(meshes.add(Circle::new(20.))),
+            MeshMaterial2d(materials.add(Color::WHITE)),
+            Transform::from_translation(Vec3::new(
+                0.0,0.0, 1.0
+            )),
+        ))
+        .id();
 
         metro.stations.add(ev.connection, ev.position, station.clone());
         commands.spawn((
@@ -117,7 +127,8 @@ fn spawn_station(
             StationButton::default(),
             station,
             render_data
-        ));
+        )).add_child(inner_circle);
+
     }
 }
 
