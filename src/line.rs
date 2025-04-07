@@ -10,7 +10,6 @@ pub struct Line {
     pub name: String,
     pub id: usize,
     pub stations: LinkedList<Station>,
-    pub points: Vec<(i32,i32)>,
     pub curve: Option<CubicCurve<Vec2>>,
     pub color: Color,
 }
@@ -29,11 +28,15 @@ impl Line {
         
         let mut rng = rand::rng();    
 
+        let mut stations = LinkedList::new();
+        for point in new_points.iter() {
+            stations.push_back(Station::new(*point));
+        }
+
         Self {
             name: LINE_NAMES[rand::rng().random_range(0..9)].to_string(),
             id,
-            stations: LinkedList::new(),
-            points: new_points,
+            stations,
             curve,
             color: Color::hsl(rng.random_range(0..=12) as f32 * 30., 0.5, 0.5)
         }

@@ -108,8 +108,8 @@ fn move_train(
         train.current = closest_index;
 
         let closest_point_tuple = (
-            closest_point.x.round() as i32,
-            closest_point.y.round() as i32,
+            closest_point.x.floor() as i32,
+            closest_point.y.floor() as i32,
         );
         if line.stations.iter().map(|station| station.position).collect::<Vec<(i32, i32)>>().contains(&closest_point_tuple) {
             commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });

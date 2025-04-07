@@ -19,10 +19,10 @@ pub struct Metro {
 
 impl Metro {
     pub fn add_line(&mut self, points: Vec<(i32,i32)>) -> &mut Line {
-        let line = Line::new_from_points(self.lines.len(), points);
+        let id = self.lines.len();
+        let line = Line::new_from_points(id, points);
         self.lines.push(line);
-        let index = self.lines.len()-1;
-        &mut self.lines[index]
+        &mut self.lines[id]
     }
 }
 
