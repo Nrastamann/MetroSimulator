@@ -7,7 +7,6 @@ name = "MetroSimulator"
 version = "0.1.0"
 dependencies = [
  "bevy",
- "bevy_dylib",
  "bevy_lunex",
  "rand 0.9.0",
 ]
@@ -532,15 +531,6 @@ dependencies = [
  "bevy_utils",
  "const-fnv1a-hash",
  "sysinfo",
-]
-
-[[package]]
-name = "bevy_dylib"
-version = "0.15.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "381b2a0773cfe9d27256fba1e5005a14968b34f751c09397ee4e278f0fb235db"
-dependencies = [
- "bevy_internal",
 ]
 
 [[package]]
