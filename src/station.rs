@@ -3,7 +3,7 @@ use rand::Rng;
 
 use crate::{
     cursor::CursorPosition,
-    metro::Metro,
+    metro::{Direction, Metro},
     station_blueprint::{Direction, SetBlueprintColorEvent, StationBlueprint},
     train::SpawnTrainEvent,
     GameState,
@@ -106,24 +106,23 @@ fn spawn_station(
         //     });
         // }
 
-        metro
-            .stations
-            .add(ev.connection, ev.position, station.clone());
-
+        metro.stations.add(ev.connection, ev.position, station.clone());
         commands.spawn((
             Mesh2d(mesh),
             MeshMaterial2d(material),
-            Transform::from_translation(Vec3::new(ev.position.0 as f32, ev.position.1 as f32, 0.0)),
+            Transform::from_translation(Vec3::new(
+                ev.position.0 as f32,
+                ev.position.1 as f32, 0.0
+            )),
+            StationButton::default(),
             station,
+            render_data
         ));
     }
 }
 
 fn hover_select( // просто выделение при наведении на станцию
     mut stations: Query<(&mut Transform, &mut StationButton)>,
-fn hover_select(
-    // просто выделение при наведении на станцию
-    mut stations: Query<(&mut Transform, &mut Station)>,
     cursor_position: Res<CursorPosition>,
 ) {
     for (mut station_transform, mut station) in stations.iter_mut() {

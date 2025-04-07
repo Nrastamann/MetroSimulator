@@ -195,6 +195,14 @@ fn move_train(
         
         train.current = closest_index;
 
+        let closest_point_tuple = (
+            closest_point.x.round() as i32,
+            closest_point.y.round() as i32,
+        );
+        if line.stations.iter().map(|station| station.position).collect::<Vec<(i32, i32)>>().contains(&closest_point_tuple) {
+            commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
+        }
+
         let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
         train_transform.rotation = train_transform.rotation.lerp(Quat::from_rotation_z(angle), 12.0 * time.delta_secs());
