@@ -17,7 +17,7 @@ impl Plugin for DistrictPlugin {
                 .run_if(on_timer(Duration::from_millis(100))),
             start_new_districts
                 .run_if(on_timer(Duration::from_millis(1000))),
-            test_draw_district
+            // test_draw_district
         )
         .run_if(in_state(GameState::InGame)));
     }

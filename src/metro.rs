@@ -6,7 +6,9 @@ pub struct MetroPlugin;
 
 impl Plugin for MetroPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Metro>();        
+        app.init_resource::<Metro>();
+        app.init_gizmo_group::<MetroLineGizmos>();
+        app.add_systems(Startup, config_gizmos);        
         app.add_systems(Update, draw_curves);
     }
 }
@@ -33,10 +35,20 @@ pub enum Direction {
     Backwards
 }
 
+#[derive(Default, Reflect, GizmoConfigGroup)]
+struct MetroLineGizmos {}
+
+fn config_gizmos(
+    mut config_store: ResMut<GizmoConfigStore>,
+) {
+    let (config, _) = config_store.config_mut::<MetroLineGizmos>();
+    config.line_width = 5.;
+}
+
 // todo: переписать, чтобы избавиться от Gizmos
 fn draw_curves( // рисуем линии
     metro: Res<Metro>,
-    mut gizmos: Gizmos
+    mut gizmos: Gizmos<MetroLineGizmos>
 ) {
     for line in metro.lines.iter() {
         let Some(ref curve) = line.curve else { continue };
