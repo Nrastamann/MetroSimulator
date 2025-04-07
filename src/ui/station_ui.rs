@@ -1,7 +1,7 @@
 use bevy::prelude::*;
 
 use crate::{
-    ui::main_menu::METRO_BLUE_COLOR, station::Station,
+    ui::main_menu::METRO_BLUE_COLOR, station::StationButton,
     GameState,
 };
 
@@ -192,7 +192,7 @@ impl PopupMenu {
 }
 
 fn draw_menu(
-    stations: Query<&Station>,
+    stations: Query<&StationButton>,
     mut draw_popup: EventWriter<SpawnPopupEvent>,
     mouse: Res<ButtonInput<MouseButton>>,
     query_window: Query<&Window>,

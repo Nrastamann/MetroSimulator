@@ -19,11 +19,18 @@ pub struct Metro {
 
 impl Metro {
     pub fn add_line(&mut self, points: Vec<(i32,i32)>) -> &mut Line {
-        let line = Line::new_from_points(points);
+        let line = Line::new_from_points(self.lines.len(), points);
         self.lines.push(line);
         let index = self.lines.len()-1;
         &mut self.lines[index]
     }
+}
+
+#[derive(Default, PartialEq, Copy, Clone)]
+pub enum Direction {
+    #[default]
+    Forwards,
+    Backwards
 }
 
 // todo: переписать, чтобы избавиться от Gizmos

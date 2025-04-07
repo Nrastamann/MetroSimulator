@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, metro::Metro, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent,GameState};
+use crate::{cursor::CursorPosition, metro::{Direction, Metro}, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent,GameState};
 
 
 pub struct StationPlugin;
@@ -15,8 +15,24 @@ impl Plugin for StationPlugin {
 
 #[derive(Component, Clone, PartialEq)]
 pub struct Station {
-    pub id: (i32, i32),
+    pub position: (i32, i32),
+}
+
+impl Station {
+    pub fn new(position: (i32, i32)) -> Self {
+        Self {
+            position,
+        }
+    }
+}
+
+#[derive(Default, Component)]
+pub struct StationButton {
     pub selected: bool,
+}
+
+#[derive(Component)]
+pub struct StationRenderData {
     pub meshes: Vec<Handle<Mesh>>,
     pub materials: Vec<Handle<ColorMaterial>>
 }
@@ -36,21 +52,22 @@ fn spawn_station(
     mut metro: ResMut<Metro>,
 ) {
     for ev in ev_spawn_station.read() {
-        let mut station = Station {
-            id: ev.position,
-            selected: false,
+        let station = Station {
+            position: ev.position,
+        };
+
+        let mut render_data = StationRenderData {
             meshes: vec![],
-            materials: vec![],
+            materials: vec![]
         };
 
         let mesh = meshes.add(Circle::new(25.));
         let material = materials.add(ev.color);
 
-        station.meshes.push(mesh.clone());
-        station.materials.push(material.clone());
+        render_data.meshes.push(mesh.clone());
+        render_data.materials.push(material.clone());
 
         metro.stations.add(ev.connection, ev.position, station.clone());
-
         commands.spawn((
             Mesh2d(mesh),
             MeshMaterial2d(material),
@@ -58,14 +75,16 @@ fn spawn_station(
                 ev.position.0 as f32,
                 ev.position.1 as f32, 0.0
             )),
-            station
+            StationButton::default(),
+            station,
+            render_data
         ));
 
     }
 }
 
 fn hover_select( // просто выделение при наведении на станцию
-    mut stations: Query<(&mut Transform, &mut Station)>,
+    mut stations: Query<(&mut Transform, &mut StationButton)>,
     cursor_position: Res<CursorPosition>,
 ) {
     for (mut station_transform, mut station) in stations.iter_mut() {
@@ -92,13 +111,13 @@ enum BuilderAction {
 struct StationBuilder { // todo: приудмать, как это переделать, чтобы было не так убого
     is_building: bool,
     line_to_attach_to: usize,
-    place: usize,
     connection: (i32, i32),
-    action: BuilderAction 
+    action: BuilderAction, 
+    direction: Direction
 }
 
 fn build_new(
-    stations: Query<&Station>,
+    q_station: Query<(&Station, &StationButton)>,
     mut metro: ResMut<Metro>,
     cursor_position: Res<CursorPosition>,
     mouse: Res<ButtonInput<MouseButton>>,
@@ -109,22 +128,36 @@ fn build_new(
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
 ) {
     if mouse.just_pressed(MouseButton::Left) { // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
-        for station in stations.iter() {
-            if station.selected {
-                for i in 0..metro.lines.len() {
-                    if let Some(place) = metro.lines[i].points.iter().position(|s| *s == station.id) {
-                        builder.line_to_attach_to = i;
-                        builder.place = place;
-                        builder.is_building = true;
-                        builder.connection = station.id;
-                        ev_set_blueprint.send( // todo: make color match the line 
-                            SetBlueprintColorEvent(
-                                Color::BLACK.with_alpha(0.5)
-                            )
-                        );
-                        break;
-                    }
+        let Some((selected_station, _)) =
+            q_station.iter()
+            .filter(
+                |(_, btn)| btn.selected
+            )
+            .next()
+        else { return }; 
+        
+        println!("able to get selected");
+        
+        for line in metro.lines.iter() {
+            if line.stations.contains(&selected_station) {
+                println!("got line of station");
+                builder.line_to_attach_to = line.id;
+                if line.stations.front().unwrap() == selected_station {
+                    builder.direction = Direction::Backwards;
                 }
+                else if line.stations.back().unwrap() == selected_station {
+                    builder.direction = Direction::Forwards;
+                }
+                else {
+                    return;
+                }
+                builder.is_building = true;
+                builder.connection = selected_station.position;
+                ev_set_blueprint.send(
+                    SetBlueprintColorEvent(
+                        Color::BLACK.with_alpha(0.5)
+                    )
+                );
                 break;
             }
         }
@@ -135,23 +168,27 @@ fn build_new(
         match builder.action {
             BuilderAction::Build => {
                 let color; 
-                let id = (cursor_position.0.x.floor() as i32,
+                let position = (cursor_position.0.x.floor() as i32,
                                       cursor_position.0.y.floor() as i32);
                 
                 if keyboard.pressed(KeyCode::ShiftLeft) {
-                    metro.add_line(vec![id, builder.connection]);
+                    metro.add_line(vec![position, builder.connection]);
                     color = metro.lines[metro.lines.len()-1].color;
                     ev_spawn_train.send(SpawnTrainEvent { line: metro.lines.len()-1, color });
                 }
                 else {
-                    let place = builder.place;
                     let line = &mut metro.lines[builder.line_to_attach_to];
-                    if place == line.points.len() - 1 {
-                        line.push(id);
+                    match builder.direction {
+                        Direction::Forwards => {
+                            line.push_back(position);
+                        },
+                        Direction::Backwards => {
+                            line.push_front(position);
+                        }
                     }
-                    else {
-                       line.insert(place, id);
-                    }
+                    // else {
+                    //    line.insert(place, id);
+                    // }
     
                     color = line.color;
                 }
@@ -162,16 +199,16 @@ fn build_new(
                     connection: builder.connection,
                 });
             },
-            BuilderAction::Connect { closest } => {
-                let place = builder.place;
-                let line = &mut metro.lines[builder.line_to_attach_to];
-                if place == line.points.len() - 1 {
-                    line.push(closest);
-                }
-                else {
-                   line.insert(place, closest);
-                }
-            },
+            // BuilderAction::Connect { closest } => {
+            //     let place = builder.place;
+            //     let line = &mut metro.lines[builder.line_to_attach_to];
+            //     if place == line.points.len() - 1 {
+            //         line.push_back(closest);
+            //     }
+            //     // else {
+            //     //    line.insert(place, closest);
+            //     // }
+            // },
             _ => {}
         }
 
@@ -202,12 +239,12 @@ fn check_building_position(
     if closest_transform.translation.distance(cursor_position.0.extend(0.0)) <= 100.0 {
         let color: Color;
 
-        if metro.lines[builder.line_to_attach_to].points.contains(&closest_station.id) {
+        if metro.lines[builder.line_to_attach_to].points.contains(&closest_station.position) {
             builder.action = BuilderAction::Nothing;
             color = Color::srgba(1.0, 0.0, 0.0, 0.5);
         }
         else {
-            builder.action = BuilderAction::Connect { closest: closest_station.id };
+            builder.action = BuilderAction::Connect { closest: closest_station.position };
             color = Color::BLACK.with_alpha(0.5);
         }
 

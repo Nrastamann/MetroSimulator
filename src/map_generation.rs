@@ -19,8 +19,8 @@ fn spawn_map(
 
     let pos1 = (1 as i32 * 100, (1 as f32).powi(2).floor() as i32 * 20);
     let pos2 = (2 as i32 * 100, (2 as f32).powi(2).floor() as i32 * 20);
-    line.push(pos1);
-    line.push(pos2);
+    line.push_back(pos1);
+    line.push_back(pos2);
     ev_spawn_station.send(SpawnStationEvent { position: pos1, connection: pos2, color: line.color });
     ev_spawn_station.send(SpawnStationEvent { position: pos2, connection: pos1, color: line.color });
 
