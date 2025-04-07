@@ -220,6 +220,7 @@ fn get_distance(center: Vec2, point: Vec2) -> f32 {
     (diff.x.powi(2) + diff.y.powi(2)).sqrt()
 }
 
+// todo: make it better
 fn sort_border_points(
     border_points: &mut Vec<Vec2>,
 ) {
@@ -268,7 +269,10 @@ fn test_draw_district(
         }
         sort_border_points(&mut border_points);
 
-        let Ok(curve) = CubicCardinalSpline::new_catmull_rom(border_points.clone()).to_curve_cyclic() else { return };
+        let Ok(curve) =
+            CubicCardinalSpline::new_catmull_rom(border_points.clone())
+                .to_curve_cyclic()
+        else { return };
 
         let resolution = 100 * curve.segments().len();
         gizmos.linestrip(
@@ -276,8 +280,11 @@ fn test_draw_district(
             district.district_type.color()
         );
 
-        for point in district.cell_keys.iter() {
-            gizmos.rect_2d(Isometry2d::from_xy(point.0 as f32 * DISTRICT_CELL_SIZE, point.1 as f32 * DISTRICT_CELL_SIZE), Vec2::splat(5.), district.district_type.color());
-        }
+        // for point in district.cell_keys.iter() {
+        //     gizmos.rect_2d(Isometry2d::from_xy(
+        //         point.0 as f32 * DISTRICT_CELL_SIZE,
+        //         point.1 as f32 * DISTRICT_CELL_SIZE
+        //     ), Vec2::splat(5.), district.district_type.color());
+        // }
     }
 }

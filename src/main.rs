@@ -33,7 +33,7 @@ use cursor::CursorPlugin;
 mod district;
 use district::DistrictPlugin;
 
-const DISTRICT_CELL_SIZE: f32 =  25.;
+const DISTRICT_CELL_SIZE: f32 =  50.;
 const MAX_DISTRICT_SIZE: usize = 60;
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
