@@ -160,6 +160,51 @@ fn load_passengers(
     station_button.passenger_ids.append(offloaded_passengers);
 }
 
+fn offload_passengers(
+    station_button: &mut StationButton,
+    station: &Station,
+    train: &mut Train,
+    passenger_database: &mut ResMut<PassengerDatabase>,
+) -> Vec<usize> {
+    let mut offloading_passengers = vec![];
+    for id in train.passenger_ids.iter() {
+        let passenger = passenger_database.0.get_mut(id).unwrap();
+        if passenger.destination_station.is_some_and(|st| st.position == station.position) {
+            offloading_passengers.push(*id);
+        }
+        passenger.destination_station = None;
+    }
+
+    train.passenger_ids =
+        train.passenger_ids.iter()
+        .filter(|&pass| !offloading_passengers.contains(pass))
+        .map(|pass| pass.clone())
+        .collect();
+
+    let mut offloaded_passengers = vec![];
+    while station_button.passenger_ids.len() < 12
+    && offloading_passengers.len() > 0 {
+        let offloading_passenger = offloading_passengers.pop().unwrap();
+        offloaded_passengers.push(offloading_passenger);
+    }
+
+    offloaded_passengers
+}
+
+fn load_passengers(
+    station_button: &mut StationButton,
+    train: &mut Train,
+    offloaded_passengers: &mut Vec<usize>,
+) {
+    while train.passenger_ids.len() < 6
+    && station_button.passenger_ids.len() > 0 {
+        let loading_passenger = station_button.passenger_ids.pop().unwrap();
+        train.passenger_ids.push(loading_passenger);
+    }
+
+    station_button.passenger_ids.append(offloaded_passengers);
+}
+
 fn move_train(
     mut commands: Commands,
     mut q_train: Query<(Entity, &mut Transform, &mut Train), Without<TrainStop>>,
@@ -219,9 +264,51 @@ fn move_train(
             closest_point.x.floor() as i32,
             closest_point.y.floor() as i32,
         );
-        if line.stations.iter().map(|station| station.position).collect::<Vec<(i32, i32)>>().contains(&closest_point_tuple) {
-            commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
+
+        // проверяем, если текущая точка пути совпадает с позицией станции и нужно сделать остановку
+        if line.stations.iter()
+            .map(|station| station.position)
+            .collect::<Vec<(i32, i32)>>()
+            .contains(&closest_point_tuple)
+        {
+            let (mut btn, station) =
+                q_station_button.iter_mut()
+                .filter(|(_, station)| station.position == closest_point_tuple)
+                .next().unwrap();
+
+
+            let mut offloading_passengers = vec![];
+            for passenger in train.passengers.iter() {
+                if passenger.destination_pool.contains(&station) {
+                    offloading_passengers.push(passenger.clone());
+                }
+            }
+
+            train.passengers =
+                train.passengers.iter()
+                .filter(|&pass| !offloading_passengers.contains(pass))
+                .map(|pass| pass.clone())
+                .collect();
+
+            let mut offloaded_passengers = vec![];
+            while btn.passengers.len() < 12
+            && offloading_passengers.len() > 0 {
+                let offloading_passenger = offloading_passengers.pop().unwrap();
+                offloaded_passengers.push(offloading_passenger);
+            }
+
+            while train.passengers.len() < 6
+            && btn.passengers.len() > 0 {
+                let loading_passenger = btn.passengers.pop().unwrap();
+                train.passengers.push(loading_passenger);
+            }
+
+            btn.passengers.append(&mut offloaded_passengers);
+
+            // commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
         }
+        
+        train.current = closest_index;
 
         let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
