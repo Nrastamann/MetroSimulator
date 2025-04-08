@@ -1,10 +1,12 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
 
 use crate::{
     cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{
         Direction,
         Metro
-    }, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent, GameState
+    }, passenger::Passenger, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent, GameState
 };
 
 
@@ -14,11 +16,13 @@ impl Plugin for StationPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<StationBuilder>();
         app.add_event::<SpawnStationEvent>();
-        app.add_systems(Update, (hover_select, check_building_position, build_new, spawn_station).run_if(in_state(GameState::InGame)));
+        app.add_systems(Update, (
+            hover_select, check_building_position, build_new, spawn_station, debug_draw_passengers
+        ).run_if(in_state(GameState::InGame)));
     }
 }
 
-#[derive(Component, Clone, PartialEq)]
+#[derive(Component, Clone, Copy, PartialEq)]
 pub struct Station {
     pub position: (i32, i32),
 }
@@ -34,19 +38,13 @@ impl Station {
 #[derive(Default, Component)]
 pub struct StationButton {
     pub selected: bool,
-}
-
-#[derive(Component)]
-pub struct StationRenderData {
-    pub meshes: Vec<Handle<Mesh>>,
-    pub materials: Vec<Handle<ColorMaterial>>
+    pub passengers: Vec<Passenger>,
 }
 
 #[derive(Event)]
 pub struct SpawnStationEvent {
     pub position: (i32, i32),
     pub connection: (i32, i32),
-    pub color: Color,
 }
 
 fn spawn_station(
@@ -61,26 +59,33 @@ fn spawn_station(
             position: ev.position,
         };
 
-        let mut render_data = StationRenderData {
-            meshes: vec![],
-            materials: vec![]
-        };
-
         let mesh = meshes.add(Circle::new(25.));
-        // let material = materials.add(ev.color);
         let material = materials.add(Color::BLACK);
-
-        render_data.meshes.push(mesh.clone());
-        render_data.materials.push(material.clone());
 
         let inner_circle = commands.spawn((
             Mesh2d(meshes.add(Circle::new(20.))),
             MeshMaterial2d(materials.add(Color::WHITE)),
             Transform::from_translation(Vec3::new(
-                0.0,0.0, 1.0
+                0.0,0.0, 2.0
             )),
         ))
         .id();
+
+        let mut button = StationButton::default();
+        for _ in 0..rand::random_range(0..5) {
+            let mut destination_pool = vec![];
+            for line in metro.lines.iter() {
+                for station in line.stations.iter() {
+                    if rand::random_bool(0.5) {
+                        destination_pool.push(*station);
+                    }
+                }
+            }
+            button.passengers.push(Passenger {
+                destination_pool,
+                ..default()
+            });
+        }
 
         metro.stations.add(ev.connection, ev.position, station.clone());
         commands.spawn((
@@ -88,13 +93,24 @@ fn spawn_station(
             MeshMaterial2d(material),
             Transform::from_translation(Vec3::new(
                 ev.position.0 as f32,
-                ev.position.1 as f32, 0.0
+                ev.position.1 as f32, 1.0
             )),
-            StationButton::default(),
+            button,
             station,
-            render_data
         )).add_child(inner_circle);
 
+    }
+}
+
+fn debug_draw_passengers(
+    q_station: Query<(&Transform, &StationButton)>,
+    mut gizmos: Gizmos
+) {
+    for (transform, station) in q_station.iter() {
+        for i in 0..station.passengers.len() {
+            let position = transform.translation.truncate() + 40. * Vec2::from_angle((i as f32)*(PI/6.));
+            gizmos.circle_2d(Isometry2d::from_translation(position), 5., Color::BLACK);
+        }
     }
 }
 
@@ -200,7 +216,6 @@ fn build_new(
 
                 ev_spawn_station.send(SpawnStationEvent {
                     position: cursor_position.as_tuple(),
-                    color: line.color,
                     connection: builder.connection,
                 });
             },
@@ -213,7 +228,6 @@ fn build_new(
 
                 ev_spawn_station.send(SpawnStationEvent {
                     position: cursor_position.as_tuple(),
-                    color,
                     connection: builder.connection,
                 });
             }
@@ -238,7 +252,7 @@ fn build_new(
 fn check_building_position(
     cursor_position: Res<CursorPosition>,
     q_stations: Query<(&Transform, &Station)>,
-    mut builder: ResMut<StationBuilder>,
+    builder: Res<StationBuilder>,
     mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
     metro: Res<Metro>,
 ) {

@@ -35,6 +35,9 @@ use cursor::CursorPlugin;
 mod district;
 use district::DistrictPlugin;
 
+mod passenger;
+use passenger::PassengerPlugin;
+
 const DISTRICT_CELL_SIZE: f32 =  50.;
 const MAX_DISTRICT_SIZE: usize = 60;
 
@@ -60,5 +63,6 @@ fn main() {
         .add_plugins(TrainPlugin)
         .add_plugins((MainMenuPlugin, StationUIPlugin))
         .add_plugins(DistrictPlugin)
+        .add_plugins(PassengerPlugin)
         .run();
 }
