@@ -1,3 +1,5 @@
+use std::f32::consts::PI;
+
 use bevy::prelude::*;
 use rand::Rng;
 
@@ -7,7 +9,7 @@ use crate::{
         Metro
     },
    
-    station_blueprint::{Direction, SetBlueprintColorEvent, StationBlueprint},
+    passenger::Passenger, station_blueprint::{Direction, SetBlueprintColorEvent, StationBlueprint},
    
     train::SpawnTrainEvent,
     
@@ -36,10 +38,12 @@ impl Plugin for StationPlugin {
         app.add_systems(
             Update,
             (
-                hover_select,
+                
+            hover_select,
                 check_building_position,
                 build_new,
-                spawn_station,
+                spawn_station, debug_draw_passengers
+        ,
                 detect_left_release,
             )
                 .run_if(in_state(GameState::InGame)),
@@ -118,13 +122,24 @@ fn spawn_station(
             MeshMaterial2d(material),
             Transform::from_translation(Vec3::new(
                 ev.position.0 as f32,
-                ev.position.1 as f32, 0.0
+                ev.position.1 as f32, 1.0
             )),
-            StationButton::default(),
+            button,
             station,
-            render_data
         )).add_child(inner_circle);
 
+    }
+}
+
+fn debug_draw_passengers(
+    q_station: Query<(&Transform, &StationButton)>,
+    mut gizmos: Gizmos
+) {
+    for (transform, station) in q_station.iter() {
+        for i in 0..station.passengers.len() {
+            let position = transform.translation.truncate() + 40. * Vec2::from_angle((i as f32)*(PI/6.));
+            gizmos.circle_2d(Isometry2d::from_translation(position), 5., Color::BLACK);
+        }
     }
 }
 
