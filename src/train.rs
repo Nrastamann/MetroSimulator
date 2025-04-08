@@ -1,7 +1,8 @@
 use bevy::prelude::*;
 
-use crate::metro::{Direction, Metro};
+use crate::{metro::{Direction, Metro}, passenger::{self, Passenger}, station::{Station, StationButton}};
 
+#[allow(unused)]
 const TRAIN_STOP_TIME_SECS: f32 = 1.0;
 const TRAIN_SPEED: f32 = 100.0;
 
@@ -24,6 +25,7 @@ pub struct SpawnTrainEvent {
 pub struct Train {
     line: usize,
     current: usize,
+    passengers: Vec<Passenger>,
     direction: Direction
 }
 
@@ -37,6 +39,7 @@ impl Train {
         Self {
             line,
             current: 0,
+            passengers: vec![],
             direction: Direction::Forwards
         }
     } 
@@ -50,7 +53,7 @@ fn spawn_train(
     metro: Res<Metro>
 ) {
     for ev in ev_spawn.read() {
-        let mesh = meshes.add(Rectangle::new(40., 20.));
+        let mesh = meshes.add(Rectangle::new(36., 16.));
         let material = materials.add(ev.color);
         
         let Some(station) = metro.lines[ev.line].stations.front() else { return };
@@ -68,6 +71,8 @@ fn spawn_train(
     }
 }
 
+
+// код говна
 fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &Direction) -> (Vec2, usize) {
     let mut sorted = positions.clone(); 
 
@@ -93,9 +98,12 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &Direction) -> (
     }
 }
 
+// todo: инкапсулировать в несколько методов (посадка-высадка пассажиров)
+// bug: на не-конечных станциях поезд прокает остановку несколько раз
 fn move_train(
     mut commands: Commands,
     mut q_train: Query<(Entity, &mut Transform, &mut Train), Without<TrainStop>>,
+    mut q_station_button: Query<(&mut StationButton, &Station)>,
     metro: Res<Metro>,
     time: Res<Time>,
 ) {
@@ -103,23 +111,69 @@ fn move_train(
         let line = &metro.lines[train.line];
         let Some(curve) = &line.curve else { return };
         let curve_positions: Vec<Vec2> = curve.iter_positions(32 * curve.segments().len()).collect();
+
+        // получаем ближайшую точку пути с учётом направления поезда (скорее всего ошибка тут, потому что код говна)
         let (closest_point, closest_index) = get_closest(&curve_positions, &train_transform.translation.truncate(), &train.direction);
 
-        train.current = closest_index;
+        // if train.current == closest_index {
+        //     continue;
+        // }
 
         let closest_point_tuple = (
             closest_point.x.floor() as i32,
             closest_point.y.floor() as i32,
         );
-        if line.stations.iter().map(|station| station.position).collect::<Vec<(i32, i32)>>().contains(&closest_point_tuple) {
-            commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
+
+        // проверяем, если текущая точка пути совпадает с позицией станции и нужно сделать остановку
+        if line.stations.iter()
+            .map(|station| station.position)
+            .collect::<Vec<(i32, i32)>>()
+            .contains(&closest_point_tuple)
+        {
+            let (mut btn, station) =
+                q_station_button.iter_mut()
+                .filter(|(_, station)| station.position == closest_point_tuple)
+                .next().unwrap();
+
+
+            let mut offloading_passengers = vec![];
+            for passenger in train.passengers.iter() {
+                if passenger.destination_pool.contains(&station) {
+                    offloading_passengers.push(passenger.clone());
+                }
+            }
+
+            train.passengers =
+                train.passengers.iter()
+                .filter(|&pass| !offloading_passengers.contains(pass))
+                .map(|pass| pass.clone())
+                .collect();
+
+            let mut offloaded_passengers = vec![];
+            while btn.passengers.len() < 12
+            && offloading_passengers.len() > 0 {
+                let offloading_passenger = offloading_passengers.pop().unwrap();
+                offloaded_passengers.push(offloading_passenger);
+            }
+
+            while train.passengers.len() < 6
+            && btn.passengers.len() > 0 {
+                let loading_passenger = btn.passengers.pop().unwrap();
+                train.passengers.push(loading_passenger);
+            }
+
+            btn.passengers.append(&mut offloaded_passengers);
+
+            // commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
         }
+        
+        train.current = closest_index;
 
         let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
         train_transform.rotation = train_transform.rotation.lerp(Quat::from_rotation_z(angle), 12.0 * time.delta_secs());
 
-        let direction = curve_positions[closest_index] - train_transform.translation.truncate();
+        let direction = curve_positions[train.current] - train_transform.translation.truncate();
         train_transform.translation += direction.normalize().extend(0.) * TRAIN_SPEED * time.delta_secs();
     }
 }
