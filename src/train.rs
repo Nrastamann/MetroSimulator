@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{metro::{Direction, Metro}, passenger::{self, Passenger}, station::{Station, StationButton}};
+use crate::{metro::{Direction, Metro}, passenger::Passenger, station::{Station, StationButton}};
 
 #[allow(unused)]
 const TRAIN_STOP_TIME_SECS: f32 = 1.0;
@@ -98,7 +98,48 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &Direction) -> (
     }
 }
 
-// todo: инкапсулировать в несколько методов (посадка-высадка пассажиров)
+fn offload_passengers(
+    station_button: &mut StationButton,
+    station: &Station,
+    train: &mut Train 
+) -> Vec<Passenger> {
+    let mut offloading_passengers = vec![];
+    for passenger in train.passengers.iter() {
+        if passenger.destination_pool.contains(&station) {
+            offloading_passengers.push(passenger.clone());
+        }
+    }
+
+    train.passengers =
+        train.passengers.iter()
+        .filter(|&pass| !offloading_passengers.contains(pass))
+        .map(|pass| pass.clone())
+        .collect();
+
+    let mut offloaded_passengers = vec![];
+    while station_button.passengers.len() < 12
+    && offloading_passengers.len() > 0 {
+        let offloading_passenger = offloading_passengers.pop().unwrap();
+        offloaded_passengers.push(offloading_passenger);
+    }
+
+    offloaded_passengers
+}
+
+fn load_passengers(
+    station_button: &mut StationButton,
+    train: &mut Train,
+    offloaded_passengers: &mut Vec<Passenger>,
+) {
+    while train.passengers.len() < 6
+    && station_button.passengers.len() > 0 {
+        let loading_passenger = station_button.passengers.pop().unwrap();
+        train.passengers.push(loading_passenger);
+    }
+
+    station_button.passengers.append(offloaded_passengers);
+}
+
 // bug: на не-конечных станциях поезд прокает остановку несколько раз
 fn move_train(
     mut commands: Commands,
@@ -113,7 +154,12 @@ fn move_train(
         let curve_positions: Vec<Vec2> = curve.iter_positions(32 * curve.segments().len()).collect();
 
         // получаем ближайшую точку пути с учётом направления поезда (скорее всего ошибка тут, потому что код говна)
-        let (closest_point, closest_index) = get_closest(&curve_positions, &train_transform.translation.truncate(), &train.direction);
+        let (closest_point, closest_index) =
+            get_closest(
+                &curve_positions,
+                &train_transform.translation.truncate(),
+                &train.direction
+            );
 
         // if train.current == closest_index {
         //     continue;
@@ -135,34 +181,8 @@ fn move_train(
                 .filter(|(_, station)| station.position == closest_point_tuple)
                 .next().unwrap();
 
-
-            let mut offloading_passengers = vec![];
-            for passenger in train.passengers.iter() {
-                if passenger.destination_pool.contains(&station) {
-                    offloading_passengers.push(passenger.clone());
-                }
-            }
-
-            train.passengers =
-                train.passengers.iter()
-                .filter(|&pass| !offloading_passengers.contains(pass))
-                .map(|pass| pass.clone())
-                .collect();
-
-            let mut offloaded_passengers = vec![];
-            while btn.passengers.len() < 12
-            && offloading_passengers.len() > 0 {
-                let offloading_passenger = offloading_passengers.pop().unwrap();
-                offloaded_passengers.push(offloading_passenger);
-            }
-
-            while train.passengers.len() < 6
-            && btn.passengers.len() > 0 {
-                let loading_passenger = btn.passengers.pop().unwrap();
-                train.passengers.push(loading_passenger);
-            }
-
-            btn.passengers.append(&mut offloaded_passengers);
+            let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train);
+            load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
 
             // commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
         }
