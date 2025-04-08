@@ -50,7 +50,7 @@ fn spawn_train(
     metro: Res<Metro>
 ) {
     for ev in ev_spawn.read() {
-        let mesh = meshes.add(Rectangle::new(30., 15.));
+        let mesh = meshes.add(Rectangle::new(40., 20.));
         let material = materials.add(ev.color);
         
         let Some(station) = metro.lines[ev.line].stations.front() else { return };
@@ -61,7 +61,7 @@ fn spawn_train(
             MeshMaterial2d(material),
             Transform::from_translation(Vec3::new(
                 position.0 as f32,
-                position.1 as f32, 2.0
+                position.1 as f32, -1.0
             )),
             Train::new(ev.line)
         ));

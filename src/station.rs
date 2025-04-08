@@ -2,10 +2,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    
-    cursor::CursorPosition,
-   
-    metro::{
+    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{
         Direction,
         Metro
     },

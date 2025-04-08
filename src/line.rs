@@ -3,10 +3,20 @@ use std::collections::LinkedList;
 use bevy::prelude::*;
 use rand::prelude::*;
 pub const LINE_NAMES: [&str; 10] = ["Ветка1","Ветка2","Ветка3","Ветка4","Ветка5","Ветка6","Ветка7","Ветка8","Ветка9","Ветка10",]; 
-use crate::station::Station;
+use crate::{metro::Metro, station::Station};
+
+pub struct MetroLinePlugin;
+
+impl Plugin for MetroLinePlugin {
+    fn build(&self, app: &mut App) {
+        app.add_event::<SpawnLineCurveEvent>();
+        app.add_event::<UpdateLineRendererEvent>();
+        app.add_systems(Update, (spawn_line_curve, update_line_renderer));
+    }
+}
 
 #[derive(PartialEq)]
-pub struct Line {
+pub struct MetroLine {
     pub name: String,
     pub id: usize,
     pub stations: LinkedList<Station>,
@@ -14,7 +24,7 @@ pub struct Line {
     pub color: Color,
 }
 
-impl Line {
+impl MetroLine {
     fn update_curve(&mut self) { // обновляем точки, по которым строится кривая
         self.curve = CubicCardinalSpline::new_catmull_rom(self.stations
             .iter().map(|station| Vec2::new(station.position.0 as f32, station.position.1 as f32)).collect::<Vec<Vec2>>())
@@ -53,3 +63,61 @@ impl Line {
     }
 }
 
+#[derive(Component)]
+struct LineRenderer {
+    line_id: usize,
+}
+
+#[derive(Event)]
+pub struct SpawnLineCurveEvent {
+    pub line_id: usize,
+}
+
+fn spawn_line_curve(
+    mut commands: Commands,
+    metro: Res<Metro>,
+    mut ev_spawn_line: EventReader<SpawnLineCurveEvent>,
+) {
+    for ev in ev_spawn_line.read() {
+        let line = &metro.lines[ev.line_id];
+        let Some(ref curve) = line.curve else { continue };
+        let resolution = 100 * curve.segments().len();
+        let points = curve.iter_positions(resolution).collect::<Vec<Vec2>>();
+
+        let mut colors = vec![];
+        for _ in 0..points.len() {
+            colors.push(line.color.into());
+        }
+        commands.spawn((
+            bevy_2d_line::Line {
+                points,
+                colors,
+                thickness: 5.0
+            },
+            LineRenderer { line_id: line.id }
+        ));        
+    }
+}
+
+#[derive(Event)]
+pub struct UpdateLineRendererEvent{
+    pub line_id: usize
+}
+
+fn update_line_renderer(
+    metro: Res<Metro>,
+    mut ev_update_line: EventReader<UpdateLineRendererEvent>,
+    mut q_line_renderer: Query<(&mut bevy_2d_line::Line, &LineRenderer)>,
+) {
+    for ev in ev_update_line.read() {
+        let (mut line, _) = q_line_renderer.iter_mut().filter(|(_, renderer)| renderer.line_id == ev.line_id).next().unwrap();
+        let line_data = &metro.lines[ev.line_id];
+        let Some(ref curve) = line_data.curve else { continue };
+        let resolution = 100 * curve.segments().len();
+
+        line.points = curve.iter_positions(resolution).collect::<Vec<Vec2>>();
+        while line.colors.len() < line.points.len() {
+            line.colors.push(line_data.color.into());
+        }
+    }
+}

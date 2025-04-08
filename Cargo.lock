@@ -7,6 +7,7 @@ name = "MetroSimulator"
 version = "0.1.0"
 dependencies = [
  "bevy",
+ "bevy_2d_line",
  "bevy_lunex",
  "rand 0.9.0",
 ]
@@ -316,6 +317,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "2eaad7fe854258047680c51c3cacb804468553c04241912f6254c841c67c0198"
 dependencies = [
  "bevy_internal",
+]
+
+[[package]]
+name = "bevy_2d_line"
+version = "0.1.4"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "399c9921af23f8f5a48caa9c87c54deb3e224d623c9fdba6a187dcfd167e1036"
+dependencies = [
+ "bevy",
 ]
 
 [[package]]
