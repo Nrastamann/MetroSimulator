@@ -1,14 +1,10 @@
 use bevy::prelude::*;
 
 use crate::{
-    cursor::CursorPosition,
-    metro::{
+    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{
         Direction,
         Metro
-    },
-    station_blueprint::SetBlueprintColorEvent,
-    train::SpawnTrainEvent,
-    GameState
+    }, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent, GameState
 };
 
 
@@ -141,11 +137,12 @@ fn build_new(
     mut metro: ResMut<Metro>,
     cursor_position: Res<CursorPosition>,
     mouse: Res<ButtonInput<MouseButton>>,
-    keyboard: Res<ButtonInput<KeyCode>>,
     mut builder: ResMut<StationBuilder>,
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
     mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
+    mut ev_update_line_renderer: EventWriter<UpdateLineRendererEvent>,
+    mut ev_spawn_line: EventWriter<SpawnLineCurveEvent>,
 ) {
     if mouse.just_pressed(MouseButton::Left) { // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
         let Some((selected_station, _)) =
@@ -197,6 +194,10 @@ fn build_new(
                     Direction::Backwards => line.push_front(position)
                 }
 
+                ev_update_line_renderer.send(UpdateLineRendererEvent {
+                    line_id: line.id
+                });
+
                 ev_spawn_station.send(SpawnStationEvent {
                     position: cursor_position.as_tuple(),
                     color: line.color,
@@ -207,6 +208,9 @@ fn build_new(
                 let line = metro.add_line(vec![position, builder.connection]);
                 let color = line.color;
                 ev_spawn_train.send(SpawnTrainEvent { line: line.id, color });
+
+                ev_spawn_line.send(SpawnLineCurveEvent { line_id: line.id });
+
                 ev_spawn_station.send(SpawnStationEvent {
                     position: cursor_position.as_tuple(),
                     color,
