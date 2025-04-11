@@ -1,3 +1,5 @@
+use std::time::{Duration, Instant};
+
 use bevy::prelude::*;
 
 use crate::{metro::{Direction, Metro}, passenger::Passenger, station::{Station, StationButton}};
@@ -26,7 +28,8 @@ pub struct Train {
     line: usize,
     current: usize,
     passengers: Vec<Passenger>,
-    direction: Direction
+    direction: Direction,
+    last_stop_time: Duration,
 }
 
 #[derive(Component)]
@@ -40,7 +43,8 @@ impl Train {
             line,
             current: 0,
             passengers: vec![],
-            direction: Direction::Forwards
+            direction: Direction::Forwards,
+            last_stop_time: Duration::from_millis(0),
         }
     } 
 }
@@ -175,6 +179,7 @@ fn move_train(
             .map(|station| station.position)
             .collect::<Vec<(i32, i32)>>()
             .contains(&closest_point_tuple)
+        && (time.elapsed() - train.last_stop_time).as_secs_f32() >= TRAIN_STOP_TIME_SECS * 1.1 // todo: get rid of magic number 
         {
             let (mut btn, station) =
                 q_station_button.iter_mut()
@@ -184,7 +189,9 @@ fn move_train(
             let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train);
             load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
 
-            // commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
+            train.last_stop_time = time.elapsed();
+
+            commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
         }
         
         train.current = closest_index;
@@ -192,7 +199,7 @@ fn move_train(
         let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
         train_transform.rotation = train_transform.rotation.lerp(Quat::from_rotation_z(angle), 12.0 * time.delta_secs());
-
+        
         let direction = curve_positions[train.current] - train_transform.translation.truncate();
         train_transform.translation += direction.normalize().extend(0.) * TRAIN_SPEED * time.delta_secs();
     }
