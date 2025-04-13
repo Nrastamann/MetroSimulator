@@ -2,8 +2,7 @@ use bevy::prelude::*;
 use bevy_lunex::*;
 //ADD REDRAW EVENT HANDLER, ADD SUPPORT TO NOT RE-CHANGE ALL TEXTs
 use crate::{
-    camera::MainCamera, cursor::CursorPosition, station::Station, ui::main_menu::METRO_BLUE_COLOR,
-    GameState,
+    camera::MainCamera, cursor::CursorPosition, station::{StartBuildingEvent, Station}, station_blueprint::Direction, ui::main_menu::METRO_BLUE_COLOR, GameState
 };
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
@@ -281,7 +280,7 @@ impl PopupMenu {
                         .with_children(|ui| {
                             let mut offset_buttons = 0.;
                             for i in RMB_BUTTONS {
-                                ui.spawn((
+                                let mut button_entity = ui.spawn((
                                     Name::new("Button handler"),
                                     UiLayout::window()
                                         .x(Rl(offset_buttons))
@@ -321,7 +320,12 @@ impl PopupMenu {
                                     });
                                 })
                                 .observe(hover_set::<Pointer<Over>, true>)
-                                .observe(hover_set::<Pointer<Out>, false>);
+                                .observe(hover_set::<Pointer<Out>, false>)
+                                .observe(|_:Trigger<Pointer<Click>>, mut new_station: EventWriter<StartBuildingEvent>|{
+                                    let mut line = 0;
+                                    //pass there something like query
+                                    new_station.send(StartBuildingEvent { connection: (0,0), direction: Direction::Forward, line_to_attach: 0 });
+                                });
                                 offset_buttons += 50.;
                             }
                         });
