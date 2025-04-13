@@ -1,11 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, station::StartBuildingEvent, GameState};
-#[derive(Copy,Clone)]
-pub enum Direction {
-    Forward,
-    Backwards,
-}
+use crate::{cursor::CursorPosition, metro::Direction, station::StartBuildingEvent, GameState};
 
 #[derive(Component)]
 pub struct StationBlueprint {
@@ -41,8 +36,8 @@ fn init_blueprint(
         StationBlueprint {
             material: material,
             connection: (0, 0),
-            direction: Direction::Forward,
-            line_to_attach: usize::MAX,
+            direction: Direction::Forwards,
+            line_to_attach: 0,
             can_build: true,
         },
         Visibility::Hidden,
@@ -63,11 +58,11 @@ pub struct SetBlueprintColorEvent(pub Color);
 
 fn toggle_station_blueprint(
     mut materials: ResMut<Assets<ColorMaterial>>,
-    mut q_blueprint: Query<(&mut Visibility, &StationBlueprint)>,
+    mut q_blueprint: Query<&StationBlueprint>,
     mut ev_toggle: EventReader<SetBlueprintColorEvent>,
 ) {
     for ev in ev_toggle.read() {
-        for (mut vision, blueprint) in q_blueprint.iter_mut() {
+        for blueprint in q_blueprint.iter_mut() {
             if let Some(material) = materials.get_mut(&blueprint.material) {
                 material.color = ev.0;
             }
@@ -87,7 +82,7 @@ fn start_building(
         blueprint.connection = ev.connection;
         blueprint.direction = ev.direction;
         blueprint.line_to_attach = ev.line_to_attach;
-        
+        println!("gotem");
         *vision = Visibility::Visible;
     }
 }
