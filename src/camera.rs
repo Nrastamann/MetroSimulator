@@ -72,8 +72,7 @@ fn zoom_camera(
     mut q_camera: Query<(&mut OrthographicProjection, &mut MainCamera)>,
     mut ev_mouse_wheel: EventReader<MouseWheel>,
     time: Res<Time>,
-    mut commands: Commands,
-    popup_q: Query<(Entity, &UiLayoutRoot), With<PopupMenu>>,
+    mut popup_q: Query<(&UiLayoutRoot, &mut Visibility), With<PopupMenu>>,
 ) {
     let Ok((mut ortho, mut camera)) = q_camera.get_single_mut() else {
         return;
@@ -89,10 +88,10 @@ fn zoom_camera(
                 if ev.y < 0.0 && camera.target_zoom + 0.25 <= camera.max_zoom {
                     camera.target_zoom += 0.25;
                 }
-                let popup = popup_q.get_single();
+                let popup = popup_q.get_single_mut();
                 match popup {
-                    Ok(popup_e) => {
-                        commands.entity(popup_e.0).despawn_recursive();
+                    Ok((_popup_root,mut vision)) => {
+                        *vision = Visibility::Visible;
                     }
                     Err(_) => {}
                 }
