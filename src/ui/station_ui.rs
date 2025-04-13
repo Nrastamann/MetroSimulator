@@ -2,7 +2,12 @@ use bevy::prelude::*;
 use bevy_lunex::*;
 //ADD REDRAW EVENT HANDLER, ADD SUPPORT TO NOT RE-CHANGE ALL TEXTs
 use crate::{
-    camera::MainCamera, cursor::CursorPosition, station::{StartBuildingEvent, Station}, station_blueprint::Direction, ui::main_menu::METRO_BLUE_COLOR, GameState
+    camera::MainCamera,
+    cursor::CursorPosition,
+    metro::Direction,
+    station::{StartBuildingEvent, Station, StationButton},
+    ui::main_menu::METRO_BLUE_COLOR,
+    GameState,
 };
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
@@ -68,6 +73,7 @@ pub struct StationUIPlugin;
 impl Plugin for StationUIPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TextboxResource>()
+            .init_resource::<CheckCheckCheck>()
             .add_event::<RedrawEvent>();
         app.add_systems(OnEnter(GameState::InGame), PopupMenu::draw_popup)
             .add_systems(
@@ -80,7 +86,6 @@ impl Plugin for StationUIPlugin {
 #[derive(Event)]
 pub struct RedrawEvent {
     change_text: bool,
-    mouse_pos: Option<Vec2>,
     station: Option<(i32, i32)>,
     name: Option<String>,
 }
@@ -92,7 +97,10 @@ pub struct TextboxResource {
 pub struct PopupMenu {
     pub station: (i32, i32),
 }
-
+#[derive(Resource, Default)]
+pub struct CheckCheckCheck {
+    pub ent: Option<Entity>,
+}
 impl PopupMenu {
     fn draw_popup(
         mut commands: Commands,
@@ -100,6 +108,7 @@ impl PopupMenu {
         asset_server: Res<AssetServer>,
         cursor_pos: Res<CursorPosition>,
         mut popup_textboxes: ResMut<TextboxResource>,
+        mut res: ResMut<CheckCheckCheck>,
     ) {
         let camera = camera_q.get_single().unwrap();
         commands
@@ -280,7 +289,7 @@ impl PopupMenu {
                         .with_children(|ui| {
                             let mut offset_buttons = 0.;
                             for i in RMB_BUTTONS {
-                                let mut button_entity = ui.spawn((
+                                let button_entity = ui.spawn((
                                     Name::new("Button handler"),
                                     UiLayout::window()
                                         .x(Rl(offset_buttons))
@@ -324,7 +333,7 @@ impl PopupMenu {
                                 .observe(|_:Trigger<Pointer<Click>>, mut new_station: EventWriter<StartBuildingEvent>|{
                                     let mut line = 0;
                                     //pass there something like query
-                                    new_station.send(StartBuildingEvent { connection: (0,0), direction: Direction::Forward, line_to_attach: 0 });
+                                    new_station.send(StartBuildingEvent { connection: (0,0), direction: Direction::Forwards, line_to_attach: 0 });
                                 });
                                 offset_buttons += 50.;
                             }
@@ -336,37 +345,47 @@ impl PopupMenu {
 }
 
 fn draw_menu(
-    stations: Query<&Station>,
+    q_station: Query<(&Station, &StationButton)>,
     mut draw_popup: EventWriter<RedrawEvent>,
     mouse: Res<ButtonInput<MouseButton>>,
     cursor_pos: Res<CursorPosition>,
-    mut popup_q: Query<(&mut Visibility, &PopupMenu), With<UiLayoutRoot>>,
+    mut popup_q: Query<(&mut Visibility, &PopupMenu, &Dimension, &Transform), With<UiLayoutRoot>>,
 ) {
-    if mouse.just_pressed(MouseButton::Right) || mouse.just_pressed(MouseButton::Left) {
-        // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
-
-        let Ok(mut popup_visibility) = popup_q.get_single_mut() else {
+    let check = mouse.just_pressed(MouseButton::Left);
+    if mouse.just_pressed(MouseButton::Right) || check {
+        let Ok((mut popup_visibility, menu, size, pos)) = popup_q.get_single_mut() else {
             panic!("Error: Popup is not founded");
         };
 
-        let mut visible = Visibility::Hidden;
-        for station in stations.iter() {
-            if station.selected {
-                let mut redraw = false;
-                if station.id != popup_visibility.1.station {
-                    redraw = true;
+        let Some((selected_station, station_name)) =
+            q_station.iter().filter(|(_, btn)| btn.selected).next()
+        else {
+            if check {
+                if cursor_pos.0.x > pos.translation.x + (size.x / 2.).floor() ||
+                cursor_pos.0.y > pos.translation.y + (size.y / 2.).floor() || 
+                cursor_pos.0.x < pos.translation.x - (size.x / 2.).floor() ||
+                cursor_pos.0.y < pos.translation.y - (size.y / 2.).floor()
+                {
+                    *popup_visibility = Visibility::Hidden;
                 }
-                draw_popup.send(RedrawEvent {
-                    change_text: redraw,
-                    mouse_pos: Some(cursor_pos.0),
-                    station: Some(station.id),
-                    name: Some(station.name.clone()),
-                });
-                visible = Visibility::Visible;
-                break;
+                return
             }
+            *popup_visibility = Visibility::Hidden;
+            return
+        };
+
+        let mut redraw = false;
+        //add lmb detection
+        if selected_station.position != menu.station {
+            redraw = true;
         }
-        *popup_visibility.0 = visible;
+        if !check {
+            draw_popup.send(RedrawEvent {
+                change_text: redraw,
+                station: Some(selected_station.position),
+                name: Some(station_name.name.clone()),
+            });
+        }
     }
 }
 fn redraw_menu(
@@ -375,7 +394,7 @@ fn redraw_menu(
     mut root: Query<&mut Transform, (With<PopupMenu>, With<UiLayoutRoot>)>,
     text_references: Res<TextboxResource>,
     cursor_pos: Res<CursorPosition>,
-
+    mut popup_q: Query<&mut Visibility, (With<PopupMenu>, With<UiLayoutRoot>)>,
     camera_q: Query<&MainCamera>,
 ) {
     for ev in redraw_popup.read() {
@@ -394,5 +413,10 @@ fn redraw_menu(
             cursor_pos.0.y - POPUP_HEIGHT / 2. * camera.target_zoom,
             0.,
         );
+        let Ok(mut popup_visibility) = popup_q.get_single_mut() else {
+            panic!("Error: Popup is not founded");
+        };
+
+        *popup_visibility = Visibility::Visible;
     }
 }
