@@ -18,8 +18,8 @@ fn spawn_map(
 ) {
     let line = metro.add_line(vec![]);
 
-    let pos1 = (1 as i32 * 100, (1 as f32).powi(2).floor() as i32 * 20);
-    let pos2 = (2 as i32 * 100, (2 as f32).powi(2).floor() as i32 * 20);
+    let pos1 = (0, 0);
+    let pos2 = (100, 0);
     line.push_back(pos1);
     line.push_back(pos2);
 

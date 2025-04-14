@@ -1,8 +1,8 @@
-use std::{cmp::Ordering, f32::consts::PI, time::Duration};
+use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use crate::{GameState, DISTRICT_CELL_SIZE, MAX_DISTRICT_SIZE};
+use crate::{passenger::AddPassengerEvent, GameState, DISTRICT_CELL_SIZE, MAX_DISTRICT_SIZE};
 
 pub struct DistrictPlugin;
 
@@ -24,8 +24,8 @@ impl Plugin for DistrictPlugin {
 }
 
 #[derive(Copy, Clone, PartialEq)]
-enum DistrictType {
-    Living,
+pub enum DistrictType {
+    Home,
     Work,
     Entertainment,
 }
@@ -33,7 +33,7 @@ enum DistrictType {
 impl DistrictType {
     fn color(&self) -> Color {
         match self {
-            Self::Living => Color::srgb(0.8, 0.4, 0.1),
+            Self::Home => Color::srgb(0.8, 0.4, 0.1),
             Self::Entertainment => Color::srgb(0.1, 0.8, 0.1),
             Self::Work => Color::srgb(0.1, 0.1, 0.8),
         }
@@ -46,31 +46,36 @@ pub struct DistrictCell {
 }
 
 #[derive(Clone, PartialEq)]
-struct District {
-    district_type: DistrictType,
+pub (crate) struct District {
+    pub district_type: DistrictType,
     is_completed: bool,
     derivatives_amount: u32,
     is_fertile: bool,
     cells: Vec<(i32, i32)>,
     max_size: usize,
+
+    pub id: usize,
+    pub(crate) passenger_ids: Vec<usize>,
 }
 
 impl Default for District {
     fn default() -> Self {
         Self {
-            district_type: DistrictType::Living,
+            district_type: DistrictType::Home,
             is_completed: false,
             derivatives_amount: 0,
             is_fertile: true,
             cells: vec![],
-            max_size: rand::random_range(0..40) + MAX_DISTRICT_SIZE
+            max_size: MAX_DISTRICT_SIZE,
+            id: 0,
+            passenger_ids: vec![]
         }
     }
 }
 
 #[derive(Resource, Default)]
 pub struct DistrictMap {
-    districts: Vec<District>,
+    pub(crate) districts: Vec<District>,
     cells: Vec<(i32, i32)>,
 }
 
@@ -78,7 +83,8 @@ fn test_gen_district(
     mut district_map: ResMut<DistrictMap>,
 ) {
     let mut district = District {
-        district_type: DistrictType::Living,
+        id: district_map.districts.len(),
+        district_type: DistrictType::Home,
         ..default()
     };
 
@@ -102,11 +108,11 @@ fn start_new_districts(
         match district.district_type {
             DistrictType::Entertainment => {
                 random_type = match rand::random_bool(0.5) {
-                    false => DistrictType::Living,
+                    false => DistrictType::Home,
                     true => DistrictType::Work,
                 };
             },
-            DistrictType::Living => {
+            DistrictType::Home => {
                 random_type = match rand::random_bool(0.5) {
                     false => DistrictType::Entertainment,
                     true => DistrictType::Work,
@@ -114,7 +120,7 @@ fn start_new_districts(
             },
             DistrictType::Work => {
                 random_type = match rand::random_bool(0.5) {
-                    false => DistrictType::Living,
+                    false => DistrictType::Home,
                     true => DistrictType::Entertainment,
                 };
             }
@@ -158,6 +164,7 @@ fn start_new_districts(
 
 fn grow_districts(
     mut district_map: ResMut<DistrictMap>,
+    mut ev_add_passenger: EventWriter<AddPassengerEvent>, 
 ) {
     for district in district_map.districts.clone().iter().filter(|&dist| !dist.is_completed) {
         if district.cells.len() >= district.max_size {
@@ -188,6 +195,14 @@ fn grow_districts(
                 new_district.cells.push((cell.0, cell.1-1));
                 break;
             }
+        }
+
+        // каждую вторую клетку добавляем пассажира в район (т.е. на 24 клетки района должно прийтись 12 пассажиров)
+        if new_district.cells.len() % 2 == 0
+        && new_district.district_type == DistrictType::Home {
+            ev_add_passenger.send(AddPassengerEvent {
+                district_id: new_district.id
+            });
         }
 
         let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
