@@ -150,7 +150,7 @@ fn debug_draw_passengers(
     mut gizmos: Gizmos
 ) {
     for (transform, station) in q_station.iter() {
-        for i in 0..station.passengers.len() {
+        for i in 0..station.passenger_ids.len() {
             let position = transform.translation.truncate() + 40. * Vec2::from_angle((i as f32)*(PI/6.));
             gizmos.circle_2d(Isometry2d::from_translation(position), 5., Color::BLACK);
         }
