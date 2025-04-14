@@ -14,7 +14,7 @@ impl Plugin for DistrictPlugin {
         ));
         app.add_systems(Update, (
             grow_districts
-                .run_if(on_timer(Duration::from_millis(1000))),
+                .run_if(on_timer(Duration::from_millis(500))),
             start_new_districts
                 .run_if(on_timer(Duration::from_millis(1000))),
             draw_district_cells
@@ -47,15 +47,15 @@ pub struct DistrictCell {
 
 #[derive(Clone, PartialEq)]
 pub (crate) struct District {
-    pub district_type: DistrictType,
     is_completed: bool,
     derivatives_amount: u32,
     is_fertile: bool,
-    cells: Vec<(i32, i32)>,
     max_size: usize,
 
+    pub district_type: DistrictType,
     pub id: usize,
     pub(crate) passenger_ids: Vec<usize>,
+    pub cells: Vec<(i32, i32)>,
 }
 
 impl Default for District {
@@ -151,6 +151,7 @@ fn start_new_districts(
         }
 
         let new_district = District {
+            id: district_map.districts.len(),
             district_type: random_type,
             cells: vec![border_points[rand::random_range(0..border_points.len())]],
             is_fertile: rand::random_bool(0.7),
@@ -198,15 +199,14 @@ fn grow_districts(
         }
 
         // каждую вторую клетку добавляем пассажира в район (т.е. на 24 клетки района должно прийтись 12 пассажиров)
-        if new_district.cells.len() % 2 == 0
+        if new_district.cells.len() % 4 == 0
         && new_district.district_type == DistrictType::Home {
             ev_add_passenger.send(AddPassengerEvent {
                 district_id: new_district.id
             });
         }
 
-        let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
-        district_map.districts[index] = new_district;
+        district_map.districts[district.id] = new_district;
     }
 }
 

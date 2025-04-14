@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer, utils::HashMap};
 
-use crate::{district::{DistrictMap, DistrictType}, station::Station, GameState};
+use crate::{district::{DistrictMap, DistrictType}, metro::Metro, station::{Station, StationButton}, GameState, DISTRICT_CELL_SIZE};
 
 pub struct PassengerPlugin;
 
@@ -12,9 +12,11 @@ impl Plugin for PassengerPlugin {
         app.add_event::<AddPassengerEvent>();
         app.add_systems(Update, (
             add_passengers,
+            decide_where_to_go,
+            start_moving,
             fill_passenger_pool
                 // не слишком часто делаем проверки на заполненный пул мест пассажира
-                .run_if(on_timer(Duration::from_millis(1000))) 
+                .run_if(on_timer(Duration::from_millis(100))) 
         ).run_if(
                 in_state(GameState::InGame)
             )
@@ -32,6 +34,7 @@ pub enum PassengerDesire {
 #[derive(Clone, PartialEq)]
 pub struct Passenger {
     pub current_desire: PassengerDesire,
+    pub last_visited_district: usize,
     pub district_ids: [usize; 3],
     pub destination_station: Option<Station>,
 }
@@ -52,6 +55,7 @@ fn add_passengers(
     for ev in ev_add_passenger.read() {
         let passenger = Passenger {
             current_desire: PassengerDesire::Home,
+            last_visited_district: ev.district_id,
             district_ids: [ev.district_id, 0, 0], // домашний район - район, в котором он создался
             destination_station: None
         };
@@ -73,10 +77,11 @@ fn fill_passenger_pool(
                 .map(|dist| dist.id).collect();
 
             if work_districts.len() <= 0 {
-                return;
+                continue;
             }
 
-            passenger.district_ids[1] = work_districts[rand::random_range(0..work_districts.len())]; 
+            let district_id = work_districts[rand::random_range(0..work_districts.len())];
+            passenger.district_ids[1] = district_id; 
         }
 
         if passenger.district_ids[2] == 0 {
@@ -87,10 +92,109 @@ fn fill_passenger_pool(
 
 
             if entertainment_districts.len() <= 0 {
-                return;
+                continue;
             }
 
-            passenger.district_ids[1] = entertainment_districts[rand::random_range(0..entertainment_districts.len())]; 
+            let district_id = entertainment_districts[rand::random_range(0..entertainment_districts.len())];
+            passenger.district_ids[2] = district_id; 
+        }
+    }
+}
+
+fn decide_where_to_go(
+    mut database: ResMut<PassengerDatabase>,
+    district_map: Res<DistrictMap>,
+    metro: Res<Metro>
+) {
+    for (_, passenger) in database.0.iter_mut() {
+        // println!("{:?}", passenger.district_ids);
+
+        if passenger.destination_station.is_some() 
+        || passenger.district_ids[1] == 0 
+        || passenger.district_ids[2] == 0 {
+            continue;
+        }
+
+        let random_desire: PassengerDesire;
+        match passenger.current_desire {
+            PassengerDesire::Entertainment => {
+                random_desire = match rand::random_bool(0.5) {
+                    false => PassengerDesire::Home,
+                    true => PassengerDesire::Work,
+                };
+            },
+            PassengerDesire::Home => {
+                random_desire = match rand::random_bool(0.5) {
+                    false => PassengerDesire::Entertainment,
+                    true => PassengerDesire::Work,
+                };
+            },
+            PassengerDesire::Work => {
+                random_desire = match rand::random_bool(0.5) {
+                    false => PassengerDesire::Home,
+                    true => PassengerDesire::Entertainment,
+                };
+            }
+        }
+        passenger.current_desire = random_desire;
+
+        let destination_district_id = passenger.district_ids[random_desire as usize];
+        let district = &district_map.districts[destination_district_id];
+
+        for line in metro.lines.iter() {
+            for station in line.stations.iter() {
+                for cell in district.cells.iter() {
+                    if (station.position.0 - cell.0).abs() as f32 <= DISTRICT_CELL_SIZE / 2.
+                    && (station.position.1 - cell.1).abs() as f32 <= DISTRICT_CELL_SIZE / 2. {
+                        passenger.destination_station = Some(*station);
+                        break;
+                    }
+                }
+            }
+        }
+    }
+}
+
+fn start_moving(
+    database: Res<PassengerDatabase>,
+    mut district_map: ResMut<DistrictMap>,
+    metro: Res<Metro>,
+    mut q_station_button: Query<(&mut StationButton, &Station)>,
+) {
+    for district in district_map.districts.iter_mut() {
+        for id in district.passenger_ids.clone().iter() {
+            let passenger = database.0.get(id).unwrap();
+            if passenger.destination_station.is_none() {
+                continue;
+            }
+
+            for line in metro.lines.iter() {
+                for station in line.stations.iter() {
+                    for cell in district.cells.iter() {
+                        if (station.position.0 - cell.0).abs() as f32 <= DISTRICT_CELL_SIZE / 2.
+                        && (station.position.1 - cell.1).abs() as f32 <= DISTRICT_CELL_SIZE / 2. {
+                            
+                            let Some((mut station_button, _)) =
+                            q_station_button.iter_mut()
+                                .filter(|(_, &st)| station.position == st.position).next()
+                            else { continue };
+
+                            if station_button.passenger_ids.len() >= 12 {
+                                continue;
+                            }
+
+                            station_button.passenger_ids.push(*id);
+
+                            let Some(remove_index) =
+                                district.passenger_ids.iter().position(|pass_id| *pass_id == *id)
+                            else { continue; };
+                            
+                            district.passenger_ids.remove(remove_index);
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }
