@@ -1,13 +1,19 @@
+use std::time::{Duration, Instant};
+
 use bevy::prelude::*;
 
-use crate::metro::Metro;
+use crate::{metro::{Direction, Metro}, passenger::Passenger, station::{Station, StationButton}};
+
+#[allow(unused)]
+const TRAIN_STOP_TIME_SECS: f32 = 1.0;
+const TRAIN_SPEED: f32 = 100.0;
 
 pub struct TrainPlugin;
 
 impl Plugin for TrainPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnTrainEvent>();
-        app.add_systems(Update, (spawn_train, move_train, switch_train_direction));
+        app.add_systems(Update, (spawn_train, move_train, stop_train, switch_train_direction));
     }
 }
 
@@ -17,17 +23,18 @@ pub struct SpawnTrainEvent {
     pub color: Color,
 }
 
-#[derive(PartialEq)]
-enum TrainDirection {
-    Forwards,
-    Backwards
-}
-
 #[derive(Component)]
 pub struct Train {
     line: usize,
     current: usize,
-    direction: TrainDirection
+    passengers: Vec<Passenger>,
+    direction: Direction,
+    last_stop_time: Duration,
+}
+
+#[derive(Component)]
+struct TrainStop {
+    timer: Timer,
 }
 
 impl Train {
@@ -35,7 +42,9 @@ impl Train {
         Self {
             line,
             current: 0,
-            direction: TrainDirection::Forwards
+            passengers: vec![],
+            direction: Direction::Forwards,
+            last_stop_time: Duration::from_millis(0),
         }
     } 
 }
@@ -48,24 +57,27 @@ fn spawn_train(
     metro: Res<Metro>
 ) {
     for ev in ev_spawn.read() {
-        let mesh = meshes.add(Rectangle::new(30., 15.));
+        let mesh = meshes.add(Rectangle::new(36., 16.));
         let material = materials.add(ev.color);
         
-        let position = metro.lines[ev.line].points[0];
+        let Some(station) = metro.lines[ev.line].stations.front() else { return };
+        let position = station.position;
 
         commands.spawn((
             Mesh2d(mesh),
             MeshMaterial2d(material),
             Transform::from_translation(Vec3::new(
                 position.0 as f32,
-                position.1 as f32, 2.0
+                position.1 as f32, -1.0
             )),
             Train::new(ev.line)
         ));
     }
 }
 
-fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &TrainDirection) -> (Vec2, usize) {
+
+// код говна
+fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &Direction) -> (Vec2, usize) {
     let mut sorted = positions.clone(); 
 
     sorted.sort_by(|pos1, pos2| {
@@ -73,14 +85,14 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &TrainDirection)
     });
 
     match direction {
-        TrainDirection::Forwards => {
+        Direction::Forwards => {
             let index = positions.iter().position(|p| *p == sorted[0]).unwrap();
             if index+1 >= positions.len() {
                 return (positions[index], index)
             }
             return (positions[index+1], index+1);
         },
-        TrainDirection::Backwards => {
+        Direction::Backwards => {
             let index = positions.iter().position(|p| *p == sorted[0]).unwrap();
             if index <= 0 {
                 return (positions[index], index);
@@ -90,25 +102,120 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &TrainDirection)
     }
 }
 
+fn offload_passengers(
+    station_button: &mut StationButton,
+    station: &Station,
+    train: &mut Train 
+) -> Vec<Passenger> {
+    let mut offloading_passengers = vec![];
+    for passenger in train.passengers.iter() {
+        if passenger.destination_pool.contains(&station) {
+            offloading_passengers.push(passenger.clone());
+        }
+    }
+
+    train.passengers =
+        train.passengers.iter()
+        .filter(|&pass| !offloading_passengers.contains(pass))
+        .map(|pass| pass.clone())
+        .collect();
+
+    let mut offloaded_passengers = vec![];
+    while station_button.passengers.len() < 12
+    && offloading_passengers.len() > 0 {
+        let offloading_passenger = offloading_passengers.pop().unwrap();
+        offloaded_passengers.push(offloading_passenger);
+    }
+
+    offloaded_passengers
+}
+
+fn load_passengers(
+    station_button: &mut StationButton,
+    train: &mut Train,
+    offloaded_passengers: &mut Vec<Passenger>,
+) {
+    while train.passengers.len() < 6
+    && station_button.passengers.len() > 0 {
+        let loading_passenger = station_button.passengers.pop().unwrap();
+        train.passengers.push(loading_passenger);
+    }
+
+    station_button.passengers.append(offloaded_passengers);
+}
+
+// bug: на не-конечных станциях поезд прокает остановку несколько раз
 fn move_train(
-    mut q_train: Query<(&mut Transform, &mut Train)>,
+    mut commands: Commands,
+    mut q_train: Query<(Entity, &mut Transform, &mut Train), Without<TrainStop>>,
+    mut q_station_button: Query<(&mut StationButton, &Station)>,
     metro: Res<Metro>,
     time: Res<Time>,
 ) {
-    for (mut train_transform, mut train) in q_train.iter_mut() {
+    for (e_train, mut train_transform, mut train) in q_train.iter_mut() {
         let line = &metro.lines[train.line];
         let Some(curve) = &line.curve else { return };
         let curve_positions: Vec<Vec2> = curve.iter_positions(32 * curve.segments().len()).collect();
-        let (closest_point, closest_index) = get_closest(&curve_positions, &train_transform.translation.truncate(), &train.direction);
 
+        // получаем ближайшую точку пути с учётом направления поезда (скорее всего ошибка тут, потому что код говна)
+        let (closest_point, closest_index) =
+            get_closest(
+                &curve_positions,
+                &train_transform.translation.truncate(),
+                &train.direction
+            );
+
+        // if train.current == closest_index {
+        //     continue;
+        // }
+
+        let closest_point_tuple = (
+            closest_point.x.floor() as i32,
+            closest_point.y.floor() as i32,
+        );
+
+        // проверяем, если текущая точка пути совпадает с позицией станции и нужно сделать остановку
+        if line.stations.iter()
+            .map(|station| station.position)
+            .collect::<Vec<(i32, i32)>>()
+            .contains(&closest_point_tuple)
+        && (time.elapsed() - train.last_stop_time).as_secs_f32() >= TRAIN_STOP_TIME_SECS * 1.1 // todo: get rid of magic number 
+        {
+            let (mut btn, station) =
+                q_station_button.iter_mut()
+                .filter(|(_, station)| station.position == closest_point_tuple)
+                .next().unwrap();
+
+            let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train);
+            load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
+
+            train.last_stop_time = time.elapsed();
+
+            commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
+        }
+        
         train.current = closest_index;
 
         let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
         train_transform.rotation = train_transform.rotation.lerp(Quat::from_rotation_z(angle), 12.0 * time.delta_secs());
+        
+        let direction = curve_positions[train.current] - train_transform.translation.truncate();
+        train_transform.translation += direction.normalize().extend(0.) * TRAIN_SPEED * time.delta_secs();
+    }
+}
 
-        let direction = curve_positions[closest_index] - train_transform.translation.truncate();
-        train_transform.translation += direction.normalize().extend(0.) * 100.0 * time.delta_secs();
+fn stop_train(
+    mut commands: Commands,
+    mut q_train: Query<(Entity, &mut TrainStop)>,
+    time: Res<Time>,
+) {
+    for (e_train, mut train_stop) in q_train.iter_mut() {
+        train_stop.timer.tick(time.delta());
+
+        if train_stop.timer.just_finished() {
+            commands.entity(e_train).remove::<TrainStop>();
+        }
     }
 }
 
@@ -121,11 +228,11 @@ fn switch_train_direction(
         let Some(curve) = &line.curve else { return };
         let curve_positions: Vec<Vec2> = curve.iter_positions(32 * curve.segments().len()).collect();
 
-        if train.current == 0 && train.direction == TrainDirection::Backwards {
-            train.direction = TrainDirection::Forwards;
+        if train.current == 0 && train.direction == Direction::Backwards {
+            train.direction = Direction::Forwards;
         }
-        if train.current == curve_positions.len()-1 && train.direction == TrainDirection::Forwards {
-            train.direction = TrainDirection::Backwards;
+        if train.current == curve_positions.len()-1 && train.direction == Direction::Forwards {
+            train.direction = Direction::Backwards;
         }
     }
 }

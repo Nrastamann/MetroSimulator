@@ -1,42 +1,45 @@
 use bevy::prelude::*;
 
-use crate::{line::Line, station::Station, utils::graph::Graph};
+use crate::{line::MetroLine, station::Station, utils::graph::Graph};
 
 pub struct MetroPlugin;
 
 impl Plugin for MetroPlugin {
     fn build(&self, app: &mut App) {
-        app.init_resource::<Metro>();        
-        app.add_systems(Update, draw_curves);
+        app.init_resource::<Metro>();
+        app.init_gizmo_group::<MetroLineGizmos>();
+        app.add_systems(Startup, config_gizmos);
     }
 }
 
 #[derive(Default, Resource)]
 pub struct Metro {
     pub stations: Graph<Station>,
-    pub lines: Vec<Line>,
+    pub lines: Vec<MetroLine>,
 }
 
 impl Metro {
-    pub fn add_line(&mut self, points: Vec<(i32,i32)>) -> &mut Line {
-        let line = Line::new_from_points(points);
+    pub fn add_line(&mut self, points: Vec<(i32,i32)>) -> &mut MetroLine {
+        let id = self.lines.len();
+        let line = MetroLine::new_from_points(id, points);
         self.lines.push(line);
-        let index = self.lines.len()-1;
-        &mut self.lines[index]
+        &mut self.lines[id]
     }
 }
 
-// todo: переписать, чтобы избавиться от Gizmos
-fn draw_curves( // рисуем линии
-    metro: Res<Metro>,
-    mut gizmos: Gizmos
+#[derive(Default, PartialEq, Copy, Clone)]
+pub enum Direction {
+    #[default]
+    Forwards,
+    Backwards
+}
+
+#[derive(Default, Reflect, GizmoConfigGroup)]
+struct MetroLineGizmos {}
+
+fn config_gizmos(
+    mut config_store: ResMut<GizmoConfigStore>,
 ) {
-    for line in metro.lines.iter() {
-        let Some(ref curve) = line.curve else { continue };
-        let resolution = 100 * curve.segments().len();
-        gizmos.linestrip(
-            curve.iter_positions(resolution).map(|pt| pt.extend(0.0)),
-            line.color
-        );
-    }
+    let (config, _) = config_store.config_mut::<MetroLineGizmos>();
+    config.line_width = 5.;
 }
