@@ -73,7 +73,6 @@ pub struct StationUIPlugin;
 impl Plugin for StationUIPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TextboxResource>()
-            .init_resource::<CheckCheckCheck>()
             .add_event::<RedrawEvent>();
         app.add_systems(OnEnter(GameState::InGame), PopupMenu::draw_popup)
             .add_systems(
@@ -91,7 +90,7 @@ pub struct RedrawEvent {
 }
 #[derive(Resource, Default)]
 pub struct TextboxResource {
-    entities: Vec<Entity>,
+    entities: Vec<Entity>, //
 }
 #[derive(Component)]
 pub struct PopupMenu {
@@ -108,7 +107,6 @@ impl PopupMenu {
         asset_server: Res<AssetServer>,
         cursor_pos: Res<CursorPosition>,
         mut popup_textboxes: ResMut<TextboxResource>,
-        mut res: ResMut<CheckCheckCheck>,
     ) {
         let camera = camera_q.get_single().unwrap();
         commands
@@ -265,26 +263,36 @@ impl PopupMenu {
                     .with_children(|ui| {
                         ui.spawn((
                             Name::new("Current lines block"),
-                            UiLayout::window().size(Rl((100., 70.))).pack(),
+                            UiLayout::window().size(Rl((100., 80.))).pack(),
+                            UiColor::from(METRO_BLUE_COLOR),
+                            Sprite::default(),
                         ))
                         .with_children(|ui| {
-                            popup_textboxes.entities.push(
+                            let line_size = 20.;
+                            let mut height_off = 0.;
+                            for i in 0..5{
                                 ui.spawn((
-                                    Name::new("Line Handler"),
-                                    UiLayout::window().anchor_center().pack(),
-                                    TextBundle::default_text(
-                                        Color::WHITE,
-                                        asset_server.load(UI_FONT),
-                                        30.,
-                                        "WORK IN PROGRESS".to_string(),
-                                    ),
-                                ))
-                                .id(),
-                            );
+                                    Name::new("Line Handler "),
+                                    UiLayout::window().anchor_left().rl_size(100.,line_size).rl_pos(0.,height_off).pack(),
+                                )).with_children(|ui|{
+                                    ui.spawn(( //need to save this, to delete&redraw it as picked
+                                        Name::new("line"),
+                                        UiLayout::window().anchor_center().full().pack(),
+                                    )).with_children(|ui|{
+                                        let text = format!("Линия {}",i + 1);
+                                        ui.spawn((
+                                            Name::new("line name"),
+                                            UiLayout::window().anchor_center().pack(),
+                                            TextBundle::default_text(Color::WHITE,asset_server.load(UI_FONT),100.,text),
+                                        ));
+                                    });
+                                });
+                            height_off += line_size;
+                            }
                         });
                         ui.spawn((
                             Name::new("Buttons section"),
-                            UiLayout::window().y(Rl(70.)).size(Rl((100., 30.))).pack(),
+                            UiLayout::window().y(Rl(80.)).size(Rl((100., 20.))).pack(),
                         ))
                         .with_children(|ui| {
                             let mut offset_buttons = 0.;
@@ -317,7 +325,7 @@ impl PopupMenu {
                                                 (UiBase::id(), Color::WHITE),
                                                 (UiHover::id(), METRO_BLUE_COLOR),
                                             ]),
-                                            UiTextSize::from(Rh(50.)),
+                                            UiTextSize::from(Rh(70.)),
                                             Text2d::new(i),
                                             TextFont {
                                                 font: asset_server.load(UI_FONT),
@@ -361,21 +369,20 @@ fn draw_menu(
             q_station.iter().filter(|(_, btn)| btn.selected).next()
         else {
             if check {
-                if cursor_pos.0.x > pos.translation.x + (size.x / 2.).floor() ||
-                cursor_pos.0.y > pos.translation.y + (size.y / 2.).floor() || 
-                cursor_pos.0.x < pos.translation.x - (size.x / 2.).floor() ||
-                cursor_pos.0.y < pos.translation.y - (size.y / 2.).floor()
+                if cursor_pos.0.x > pos.translation.x + (size.x / 2.).floor()
+                    || cursor_pos.0.y > pos.translation.y + (size.y / 2.).floor()
+                    || cursor_pos.0.x < pos.translation.x - (size.x / 2.).floor()
+                    || cursor_pos.0.y < pos.translation.y - (size.y / 2.).floor()
                 {
                     *popup_visibility = Visibility::Hidden;
                 }
-                return
+                return;
             }
             *popup_visibility = Visibility::Hidden;
-            return
+            return;
         };
 
         let mut redraw = false;
-        //add lmb detection
         if selected_station.position != menu.station {
             redraw = true;
         }
@@ -399,10 +406,10 @@ fn redraw_menu(
 ) {
     for ev in redraw_popup.read() {
         if ev.change_text {
-            for i in text_references.entities.clone() {
-                let mut text = text_query.get_mut(i).unwrap();
-                text.0 = "sosal".to_string();
-            }
+            //            for i in text_references.entities.clone() {
+            //                let mut text = text_query.get_mut(i).unwrap();
+            //                text.0 = "sosal".to_string();
+            //            }
         }
         let mut position = root.get_single_mut().unwrap();
 
