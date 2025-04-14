@@ -1,7 +1,7 @@
 use bevy::{input::mouse::MouseWheel, prelude::*};
-use bevy_lunex::{UiLayoutRoot, UiSourceCamera};
+use bevy_lunex::{Dimension, UiLayoutRoot, UiSourceCamera};
 
-use crate::{ui::PopupMenu, GameState};
+use crate::{ui::{PopupMenu, POPUP_HEIGHT, POPUP_WIDTH}, GameState};
 
 pub struct CameraPlugin;
 
@@ -63,14 +63,14 @@ fn move_camera(
         direction.y += 1.;
     }
 
-    camera_transform.translation += direction.extend(0.0) * camera.move_speed * time.delta_secs();
+    camera_transform.translation += direction.extend(0.0) * camera.move_speed * camera.target_zoom * time.delta_secs();
 }
 
 fn zoom_camera(
     mut q_camera: Query<(&mut OrthographicProjection, &mut MainCamera)>,
     mut ev_mouse_wheel: EventReader<MouseWheel>,
     time: Res<Time>,
-    mut popup_q: Query<(&UiLayoutRoot, &mut Visibility), With<PopupMenu>>,
+    mut popup_q: Query<(&mut Visibility, &mut Dimension), (With<UiLayoutRoot>, With<PopupMenu>)>,
 ) {
     let Ok((mut ortho, mut camera)) = q_camera.get_single_mut() else {
         return;
@@ -86,13 +86,15 @@ fn zoom_camera(
                 if ev.y < 0.0 && camera.target_zoom + 0.25 <= camera.max_zoom {
                     camera.target_zoom += 0.25;
                 }
-                let popup = popup_q.get_single_mut();
-                match popup {
-                    Ok((_popup_root,mut vision)) => {
-                        *vision = Visibility::Visible;
-                    }
-                    Err(_) => {}
-                }
+                let Ok((mut vision, mut size)) = popup_q.get_single_mut() else {
+                    return;
+                };
+
+                *vision = Visibility::Hidden;
+                *size = Dimension::from((
+                    POPUP_WIDTH * camera.target_zoom,
+                    POPUP_HEIGHT * camera.target_zoom,
+                ));
             }
             _ => {}
         }
