@@ -15,6 +15,10 @@ impl Plugin for CameraPlugin {
             Update,
             (move_camera, zoom_camera).run_if(in_state(GameState::InGame)),
         );
+        app.add_systems(
+            Update,
+            (move_camera, zoom_camera).run_if(in_state(GameState::InGame)),
+        );
     }
 }
 
@@ -105,6 +109,7 @@ fn zoom_camera(
             _ => {}
         }
     }
+
     ortho.scale = ortho
         .scale
         .lerp(camera.target_zoom, 15. * time.delta_secs());

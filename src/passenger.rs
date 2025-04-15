@@ -243,25 +243,32 @@ fn stop_moving(
 ) {
     for line in metro.lines.iter() {
         for station in line.stations.iter() {
-            let Some((mut station_button, _)) =
-            q_station_button.iter_mut()
-                .filter(|(_, &st)| station.position == st.position).next()
-            else { continue };
+            let Some((mut station_button, _)) = q_station_button
+                .iter_mut()
+                .filter(|(_, &st)| station.position == st.position)
+                .next()
+            else {
+                continue;
+            };
 
             for passenger_id in station_button.passenger_ids.clone().iter() {
-                let Some(passenger) = database.0.get(passenger_id)
-                else {continue};
-                
+                let Some(passenger) = database.0.get(passenger_id) else {
+                    continue;
+                };
+
                 if passenger.destination_station.is_some() {
                     continue;
                 }
 
-                let district = &mut district_map.districts[passenger.district_ids[passenger.current_desire as usize]];
+                let district = &mut district_map.districts
+                    [passenger.district_ids[passenger.current_desire as usize]];
                 district.passenger_ids.push(*passenger_id);
 
-                let remove_index =
-                    station_button.passenger_ids.iter()
-                    .position(|id| id == passenger_id).unwrap();
+                let remove_index = station_button
+                    .passenger_ids
+                    .iter()
+                    .position(|id| id == passenger_id)
+                    .unwrap();
 
                 station_button.passenger_ids.remove(remove_index);
             }

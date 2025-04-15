@@ -215,7 +215,8 @@ fn move_train(
 
         train.current = closest_index;
 
-        let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
+        let diff =
+            closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
         train_transform.rotation = train_transform
             .rotation
