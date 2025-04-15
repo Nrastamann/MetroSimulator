@@ -1,7 +1,10 @@
 use bevy::{input::mouse::MouseWheel, prelude::*};
 use bevy_lunex::{Dimension, UiLayoutRoot, UiSourceCamera};
 
-use crate::{ui::{PopupMenu, POPUP_HEIGHT, POPUP_WIDTH}, GameState};
+use crate::{
+    ui::{ChangeLinesVisibility, PopupMenu, POPUP_HEIGHT, POPUP_WIDTH},
+    GameState,
+};
 
 pub struct CameraPlugin;
 
@@ -65,7 +68,8 @@ fn move_camera(
         direction.y += 1.;
     }
 
-    camera_transform.translation += direction.extend(0.0) * camera.move_speed * camera.target_zoom * time.delta_secs();
+    camera_transform.translation +=
+        direction.extend(0.0) * camera.move_speed * camera.target_zoom * time.delta_secs();
 }
 
 fn zoom_camera(
@@ -73,6 +77,7 @@ fn zoom_camera(
     mut ev_mouse_wheel: EventReader<MouseWheel>,
     time: Res<Time>,
     mut popup_q: Query<(&mut Visibility, &mut Dimension), (With<UiLayoutRoot>, With<PopupMenu>)>,
+    mut ev_change_vision: EventWriter<ChangeLinesVisibility>,
 ) {
     let Ok((mut ortho, mut camera)) = q_camera.get_single_mut() else {
         return;
@@ -97,6 +102,7 @@ fn zoom_camera(
                     POPUP_WIDTH * camera.target_zoom,
                     POPUP_HEIGHT * camera.target_zoom,
                 ));
+                ev_change_vision.send(ChangeLinesVisibility { show: false });
             }
             _ => {}
         }
