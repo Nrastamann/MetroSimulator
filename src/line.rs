@@ -24,18 +24,30 @@ pub struct MetroLine {
 }
 
 impl MetroLine {
-    fn update_curve(&mut self) { // обновляем точки, по которым строится кривая
-        self.curve = CubicCardinalSpline::new_catmull_rom(self.stations
-            .iter().map(|station| Vec2::new(station.position.0 as f32, station.position.1 as f32)).collect::<Vec<Vec2>>())
-            .to_curve().ok();
+    fn update_curve(&mut self) {
+        // обновляем точки, по которым строится кривая
+        self.curve = CubicCardinalSpline::new_catmull_rom(
+            self.stations
+                .iter()
+                .map(|station| Vec2::new(station.position.0 as f32, station.position.1 as f32))
+                .collect::<Vec<Vec2>>(),
+        )
+        .to_curve()
+        .ok();
     }
 
-    pub fn new_from_points(id: usize, new_points: Vec<(i32, i32)>) -> Self { // новая ветка из вектора станций
-        let curve = CubicCardinalSpline::new_catmull_rom(new_points
-            .iter().map(|&(x,y)| Vec2::new(x as f32, y as f32)).collect::<Vec<Vec2>>())
-            .to_curve().ok();
-        
-        let mut rng = rand::rng();    
+    pub fn new_from_points(id: usize, new_points: Vec<(i32, i32)>) -> Self {
+        // новая ветка из вектора станций
+        let curve = CubicCardinalSpline::new_catmull_rom(
+            new_points
+                .iter()
+                .map(|&(x, y)| Vec2::new(x as f32, y as f32))
+                .collect::<Vec<Vec2>>(),
+        )
+        .to_curve()
+        .ok();
+
+        let mut rng = rand::rng();
 
         let mut stations = LinkedList::new();
         for point in new_points.iter() {
@@ -46,7 +58,7 @@ impl MetroLine {
             id,
             stations,
             curve,
-            color: Color::hsl(rng.random_range(0..=12) as f32 * 30., 0.5, 0.5)
+            color: Color::hsl(rng.random_range(0..=12) as f32 * 30., 0.5, 0.5),
         }
     }
 
@@ -78,7 +90,9 @@ fn spawn_line_curve(
 ) {
     for ev in ev_spawn_line.read() {
         let line = &metro.lines[ev.line_id];
-        let Some(ref curve) = line.curve else { continue };
+        let Some(ref curve) = line.curve else {
+            continue;
+        };
         let resolution = 100 * curve.segments().len();
         let points = curve.iter_positions(resolution).collect::<Vec<Vec2>>();
 
@@ -90,16 +104,16 @@ fn spawn_line_curve(
             bevy_2d_line::Line {
                 points,
                 colors,
-                thickness: 5.0
+                thickness: 5.0,
             },
             LineRenderer { line_id: line.id },
-        ));        
+        ));
     }
 }
 
 #[derive(Event)]
-pub struct UpdateLineRendererEvent{
-    pub line_id: usize
+pub struct UpdateLineRendererEvent {
+    pub line_id: usize,
 }
 
 fn update_line_renderer(
@@ -108,9 +122,15 @@ fn update_line_renderer(
     mut q_line_renderer: Query<(&mut bevy_2d_line::Line, &LineRenderer)>,
 ) {
     for ev in ev_update_line.read() {
-        let (mut line, _) = q_line_renderer.iter_mut().filter(|(_, renderer)| renderer.line_id == ev.line_id).next().unwrap();
+        let (mut line, _) = q_line_renderer
+            .iter_mut()
+            .filter(|(_, renderer)| renderer.line_id == ev.line_id)
+            .next()
+            .unwrap();
         let line_data = &metro.lines[ev.line_id];
-        let Some(ref curve) = line_data.curve else { continue };
+        let Some(ref curve) = line_data.curve else {
+            continue;
+        };
         let resolution = 100 * curve.segments().len();
 
         line.points = curve.iter_positions(resolution).collect::<Vec<Vec2>>();

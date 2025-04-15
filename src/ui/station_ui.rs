@@ -1,9 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{
-    ui::main_menu::METRO_BLUE_COLOR, station::StationButton,
-    GameState,
-};
+use crate::{station::StationButton, ui::main_menu::METRO_BLUE_COLOR, GameState};
 
 pub struct StationUIPlugin;
 
@@ -17,7 +14,7 @@ impl Plugin for StationUIPlugin {
 #[derive(Event)]
 pub struct SpawnPopupEvent {
     mouse_pos: Vec2,
-//    station: Station,
+    //    station: Station,
 }
 
 #[derive(Component)]
@@ -73,24 +70,26 @@ impl PopupMenu {
                             ..default()
                         },
                         BackgroundColor(METRO_BLUE_COLOR),
-                    )).with_children(|ui|{
+                    ))
+                    .with_children(|ui| {
                         ui.spawn((
-                           Text::new(//ev.station.name
-                            "STATION NAME"
-                           ), 
-                           TextFont{
-                            font: asset_server.load("fonts/Metro.ttf"),
-                            font_size: 18.,
-                            ..default()
-                           },
-                           TextColor(Color::WHITE),
+                            Text::new(
+                                //ev.station.name
+                                "STATION NAME",
+                            ),
+                            TextFont {
+                                font: asset_server.load("fonts/Metro.ttf"),
+                                font_size: 18.,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
                         ));
                     });
-                    
+
                     //BORDER
-                    
+
                     ui.spawn((
-                        Node{
+                        Node {
                             position_type: PositionType::Absolute,
                             top: Val::Percent(30.),
                             left: Val::Percent(0.),
@@ -107,7 +106,7 @@ impl PopupMenu {
                     ));
 
                     //STATS ROOT NODE
-                    
+
                     ui.spawn((
                         Node {
                             position_type: PositionType::Absolute,
@@ -123,24 +122,26 @@ impl PopupMenu {
                             ..default()
                         },
                         BackgroundColor(METRO_BLUE_COLOR),
-                    )).with_children(|ui|{
+                    ))
+                    .with_children(|ui| {
                         ui.spawn((
-                           Text::new(//ev.station.name
-                            "STATS SECTION"
-                           ), 
-                           TextFont{
-                            font: asset_server.load("fonts/Metro.ttf"),
-                            font_size: 18.,
-                            ..default()
-                           },
-                           TextColor(Color::WHITE),
+                            Text::new(
+                                //ev.station.name
+                                "STATS SECTION",
+                            ),
+                            TextFont {
+                                font: asset_server.load("fonts/Metro.ttf"),
+                                font_size: 18.,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
                         ));
                     });
 
                     //BORDER NODE
 
                     ui.spawn((
-                        Node{
+                        Node {
                             position_type: PositionType::Absolute,
                             top: Val::Percent(31.),
                             left: Val::Percent(49.5),
@@ -155,7 +156,7 @@ impl PopupMenu {
                         },
                         BackgroundColor(Color::BLACK),
                     ));
-                    
+
                     //BUTTON ROOT NODE
 
                     ui.spawn((
@@ -173,17 +174,19 @@ impl PopupMenu {
                             ..default()
                         },
                         BackgroundColor(METRO_BLUE_COLOR),
-                    )).with_children(|ui|{
+                    ))
+                    .with_children(|ui| {
                         ui.spawn((
-                           Text::new(//ev.station.name
-                            "LINES SECTION"
-                           ), 
-                           TextFont{
-                            font: asset_server.load("fonts/Metro.ttf"),
-                            font_size: 18.,
-                            ..default()
-                           },
-                           TextColor(Color::WHITE),
+                            Text::new(
+                                //ev.station.name
+                                "LINES SECTION",
+                            ),
+                            TextFont {
+                                font: asset_server.load("fonts/Metro.ttf"),
+                                font_size: 18.,
+                                ..default()
+                            },
+                            TextColor(Color::WHITE),
                         ));
                     });
                 });
@@ -205,7 +208,7 @@ fn draw_menu(
                 if let Some(cursor_pos) = window.cursor_position() {
                     draw_popup.send(SpawnPopupEvent {
                         mouse_pos: cursor_pos.clone(),
-//                        station: *station,
+                        //                        station: *station,
                     });
                 } else {
                     panic!("Error: Cursor is not founded");

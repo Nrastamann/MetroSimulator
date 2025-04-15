@@ -38,7 +38,7 @@ use district::DistrictPlugin;
 mod passenger;
 use passenger::PassengerPlugin;
 
-const DISTRICT_CELL_SIZE: f32 =  50.;
+const DISTRICT_CELL_SIZE: f32 = 50.;
 const MAX_DISTRICT_SIZE: usize = 24;
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]

@@ -8,7 +8,10 @@ pub struct CameraPlugin;
 impl Plugin for CameraPlugin {
     fn build(&self, app: &mut App) {
         app.add_systems(Startup, spawn_camera);
-        app.add_systems(Update, (move_camera, zoom_camera).run_if(in_state(GameState::InGame)));
+        app.add_systems(
+            Update,
+            (move_camera, zoom_camera).run_if(in_state(GameState::InGame)),
+        );
     }
 }
 
@@ -31,9 +34,7 @@ impl Default for MainCamera {
     }
 }
 
-fn spawn_camera(
-    mut commands: Commands,
-) {
+fn spawn_camera(mut commands: Commands) {
     commands.insert_resource(ClearColor(Color::srgb(0.9, 0.9, 0.8)));
     commands.spawn((Camera2d, MainCamera::default(), UiSourceCamera::<0>));
 }
@@ -43,7 +44,9 @@ fn move_camera(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
-    let Ok((mut camera_transform, camera)) = q_camera.get_single_mut() else { return };
+    let Ok((mut camera_transform, camera)) = q_camera.get_single_mut() else {
+        return;
+    };
 
     let mut direction = Vec2::ZERO;
 
@@ -68,22 +71,26 @@ fn zoom_camera(
     mut ev_mouse_wheel: EventReader<MouseWheel>,
     time: Res<Time>,
 ) {
-    let Ok((mut ortho, mut camera)) = q_camera.get_single_mut() else { return };
+    let Ok((mut ortho, mut camera)) = q_camera.get_single_mut() else {
+        return;
+    };
 
     use bevy::input::mouse::MouseScrollUnit;
     for ev in ev_mouse_wheel.read() {
         match ev.unit {
             MouseScrollUnit::Line => {
-                if ev.y  > 0.0 && camera.target_zoom - 0.25 >= camera.min_zoom {
+                if ev.y > 0.0 && camera.target_zoom - 0.25 >= camera.min_zoom {
                     camera.target_zoom -= 0.25;
                 }
                 if ev.y < 0.0 && camera.target_zoom + 0.25 <= camera.max_zoom {
                     camera.target_zoom += 0.25;
                 }
-            },
+            }
             _ => {}
         }
     }
 
-    ortho.scale = ortho.scale.lerp(camera.target_zoom, 15. * time.delta_secs());
+    ortho.scale = ortho
+        .scale
+        .lerp(camera.target_zoom, 15. * time.delta_secs());
 }

@@ -17,7 +17,7 @@ fn despawn_scene_with<S: Component>(mut commands: Commands, query: Query<Entity,
 pub const METRO_BLUE_COLOR: Color = Color::srgb(0.09, 0.337, 0.635);
 pub const BUTTON_SIZE: f32 = 14.0;
 pub const BUTTON_GAP: f32 = 11.0;
-pub const MAIN_MENU_BUTTONS: [&str; 3] = ["Новая игра","Настройки", "Выйти"];
+pub const MAIN_MENU_BUTTONS: [&str; 4] = ["Новая игра","Обучение","Настройки","Выйти"];
 
 #[derive(Component)]
 pub struct MainMenuScene;
