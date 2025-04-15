@@ -158,41 +158,51 @@ fn decide_where_to_go(
 fn start_moving(
     database: Res<PassengerDatabase>,
     mut district_map: ResMut<DistrictMap>,
-    metro: Res<Metro>,
+    mut metro: ResMut<Metro>,
     mut q_station_button: Query<(&mut StationButton, &Station)>,
 ) {
-    for district in district_map.districts.iter_mut() {
+    for district in district_map.districts.iter_mut()
+    .filter(|dist| dist.passenger_ids.len() > 0) {
         for id in district.passenger_ids.clone().iter() {
             let passenger = database.0.get(id).unwrap();
             if passenger.destination_station.is_none() {
                 continue;
             }
 
-            for line in metro.lines.iter() {
-                for station in line.stations.iter() {
-                    for cell in district.cells.iter() {
-                        if (station.position.0 - cell.0).abs() as f32 <= DISTRICT_CELL_SIZE / 2.
-                        && (station.position.1 - cell.1).abs() as f32 <= DISTRICT_CELL_SIZE / 2. {
-                            
-                            let Some((mut station_button, _)) =
-                            q_station_button.iter_mut()
-                                .filter(|(_, &st)| station.position == st.position).next()
-                            else { continue };
+            let mut stations = vec![];
 
-                            if station_button.passenger_ids.len() >= 12 {
-                                continue;
-                            }
+            for line in metro.lines.iter_mut() {
+                stations.append(&mut line.stations.iter().collect::<Vec<&Station>>());
+            }
 
-                            station_button.passenger_ids.push(*id);
+            'outer: for station in stations.iter() {
+                for cell in district.cells.iter() {
 
-                            let Some(remove_index) =
-                                district.passenger_ids.iter().position(|pass_id| *pass_id == *id)
-                            else { continue; };
-                            
-                            district.passenger_ids.remove(remove_index);
-                            break;
-                        }
+                    let cell_position = Vec2::new(cell.0 as f32, cell.1 as f32) * DISTRICT_CELL_SIZE;
+                    let station_position = Vec2::new(station.position.0 as f32, station.position.1 as f32);
+                    let distance = cell_position.distance(station_position);
+
+                    if distance > DISTRICT_CELL_SIZE / 2. {
+                        continue;
                     }
+
+                    let Some((mut station_button, _)) =
+                    q_station_button.iter_mut()
+                        .filter(|(_, &st)| station.position == st.position).next()
+                    else { continue };
+
+                    if station_button.passenger_ids.len() >= 12 {
+                        continue;
+                    }
+
+                    station_button.passenger_ids.push(*id);
+
+                    let Some(remove_index) =
+                        district.passenger_ids.iter().position(|pass_id| *pass_id == *id)
+                    else { continue; };
+                    
+                    district.passenger_ids.remove(remove_index);
+                    break 'outer;
                 }
             }
         }

@@ -106,11 +106,12 @@ fn offload_passengers(
     station_button: &mut StationButton,
     station: &Station,
     train: &mut Train,
-    passenger_database: &Res<PassengerDatabase>,
+    passenger_database: &mut ResMut<PassengerDatabase>,
 ) -> Vec<usize> {
     let mut offloading_passengers = vec![];
     for id in train.passenger_ids.iter() {
-        let passenger = passenger_database.0.get(id).unwrap();
+        let passenger = passenger_database.0.get_mut(id).unwrap();
+        passenger.destination_station = None;
         if passenger.destination_station.is_some_and(|st| st.position == station.position) {
             offloading_passengers.push(*id);
         }
@@ -152,7 +153,7 @@ fn move_train(
     mut q_station_button: Query<(&mut StationButton, &Station)>,
     metro: Res<Metro>,
     time: Res<Time>,
-    passenger_database: Res<PassengerDatabase>,
+    mut passenger_database: ResMut<PassengerDatabase>,
 ) {
     for (e_train, mut train_transform, mut train) in q_train.iter_mut() {
         let line = &metro.lines[train.line];
@@ -184,7 +185,7 @@ fn move_train(
                 .filter(|(_, station)| station.position == closest_point_tuple)
                 .next().unwrap();
 
-            let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train, &passenger_database);
+            let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train, &mut passenger_database);
             load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
 
             train.last_stop_time = time.elapsed();

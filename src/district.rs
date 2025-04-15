@@ -101,8 +101,7 @@ fn start_new_districts(
     for district in district_map.districts.clone().iter()
         .filter(|&dist| dist.is_completed && dist.derivatives_amount < 4 && dist.is_fertile) {
         
-        let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
-        district_map.districts[index].derivatives_amount+=1;
+        district_map.districts[district.id].derivatives_amount+=1;
 
         let random_type: DistrictType;
         match district.district_type {
@@ -169,8 +168,7 @@ fn grow_districts(
 ) {
     for district in district_map.districts.clone().iter().filter(|&dist| !dist.is_completed) {
         if district.cells.len() >= district.max_size {
-            let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
-            district_map.districts[index].is_completed=true;
+            district_map.districts[district.id].is_completed=true;
             return;
         }
 
@@ -202,7 +200,7 @@ fn grow_districts(
         if new_district.cells.len() % 4 == 0
         && new_district.district_type == DistrictType::Home {
             ev_add_passenger.send(AddPassengerEvent {
-                district_id: new_district.id
+                district_id: district.id
             });
         }
 
