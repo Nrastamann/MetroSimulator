@@ -1,11 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, station::StartBuildingEvent, GameState, DISTRICT_CELL_SIZE};
-#[derive(Copy,Clone)]
-pub enum Direction {
-    Forward,
-    Backwards,
-}
+use crate::{cursor::CursorPosition, metro::Direction, station::StartBuildingEvent, GameState, DISTRICT_CELL_SIZE};
 
 #[derive(Component)]
 pub struct StationBlueprint {

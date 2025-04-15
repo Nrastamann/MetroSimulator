@@ -7,7 +7,6 @@ use crate::{
     cursor::CursorPosition,
     line::{SpawnLineCurveEvent, UpdateLineRendererEvent},
     metro::{Direction, Metro},
-    passenger::Passenger,
     station_blueprint::{SetBlueprintColorEvent, StationBlueprint},
     train::SpawnTrainEvent,
     GameState,

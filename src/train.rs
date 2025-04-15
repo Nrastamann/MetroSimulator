@@ -147,51 +147,6 @@ fn load_passengers(
     station_button.passenger_ids.append(offloaded_passengers);
 }
 
-fn offload_passengers(
-    station_button: &mut StationButton,
-    station: &Station,
-    train: &mut Train,
-    passenger_database: &mut ResMut<PassengerDatabase>,
-) -> Vec<usize> {
-    let mut offloading_passengers = vec![];
-    for id in train.passenger_ids.iter() {
-        let passenger = passenger_database.0.get_mut(id).unwrap();
-        if passenger.destination_station.is_some_and(|st| st.position == station.position) {
-            offloading_passengers.push(*id);
-        }
-        passenger.destination_station = None;
-    }
-
-    train.passenger_ids =
-        train.passenger_ids.iter()
-        .filter(|&pass| !offloading_passengers.contains(pass))
-        .map(|pass| pass.clone())
-        .collect();
-
-    let mut offloaded_passengers = vec![];
-    while station_button.passenger_ids.len() < 12
-    && offloading_passengers.len() > 0 {
-        let offloading_passenger = offloading_passengers.pop().unwrap();
-        offloaded_passengers.push(offloading_passenger);
-    }
-
-    offloaded_passengers
-}
-
-fn load_passengers(
-    station_button: &mut StationButton,
-    train: &mut Train,
-    offloaded_passengers: &mut Vec<usize>,
-) {
-    while train.passenger_ids.len() < 6
-    && station_button.passenger_ids.len() > 0 {
-        let loading_passenger = station_button.passenger_ids.pop().unwrap();
-        train.passenger_ids.push(loading_passenger);
-    }
-
-    station_button.passenger_ids.append(offloaded_passengers);
-}
-
 fn move_train(
     mut commands: Commands,
     mut q_train: Query<(Entity, &mut Transform, &mut Train), Without<TrainStop>>,

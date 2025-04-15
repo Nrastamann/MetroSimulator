@@ -3,7 +3,7 @@ use bevy::prelude::*;
 mod utils;
 
 use bevy_2d_line::LineRenderingPlugin;
-use bevy_lunex::UiLunexPlugins;
+use bevy_lunex::{UiLunexDebugPlugin, UiLunexPlugins};
 
 mod camera;
 use camera::CameraPlugin;
@@ -52,7 +52,6 @@ fn main() {
     App::new()
         .add_plugins(DefaultPlugins)
         .add_plugins(UiLunexPlugins)
-        .add_plugins(DistrictPlugin)
         .add_plugins(CursorPlugin)
         .add_plugins(MapGenerationPlugin)
         .init_state::<GameState>()
