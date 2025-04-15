@@ -34,7 +34,7 @@ impl Default for MainCamera {
 fn spawn_camera(
     mut commands: Commands,
 ) {
-    commands.insert_resource(ClearColor(Color::srgb(1.0, 0.9, 0.9)));
+    commands.insert_resource(ClearColor(Color::srgb(0.9, 0.9, 0.8)));
     commands.spawn((Camera2d, MainCamera::default(), UiSourceCamera::<0>));
 }
 

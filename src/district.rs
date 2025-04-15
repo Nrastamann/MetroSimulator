@@ -1,8 +1,8 @@
-use std::{cmp::Ordering, collections::HashMap, f32::consts::PI, time::Duration};
+use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use crate::{GameState, DISTRICT_CELL_SIZE, MAX_DISTRICT_SIZE};
+use crate::{passenger::AddPassengerEvent, GameState, DISTRICT_CELL_SIZE, MAX_DISTRICT_SIZE};
 
 pub struct DistrictPlugin;
 
@@ -14,18 +14,18 @@ impl Plugin for DistrictPlugin {
         ));
         app.add_systems(Update, (
             grow_districts
-                .run_if(on_timer(Duration::from_millis(100))),
+                .run_if(on_timer(Duration::from_millis(500))),
             start_new_districts
                 .run_if(on_timer(Duration::from_millis(1000))),
-            // test_draw_district
+            draw_district_cells
         )
         .run_if(in_state(GameState::InGame)));
     }
 }
 
 #[derive(Copy, Clone, PartialEq)]
-enum DistrictType {
-    Living,
+pub enum DistrictType {
+    Home,
     Work,
     Entertainment,
 }
@@ -33,58 +33,64 @@ enum DistrictType {
 impl DistrictType {
     fn color(&self) -> Color {
         match self {
-            Self::Living => Color::srgb(0.8, 0.4, 0.1),
+            Self::Home => Color::srgb(0.8, 0.4, 0.1),
             Self::Entertainment => Color::srgb(0.1, 0.8, 0.1),
             Self::Work => Color::srgb(0.1, 0.1, 0.8),
         }
     }
 }
 
+#[derive(Component, PartialEq, Copy, Clone)]
 pub struct DistrictCell {
-    population: u32,
-    max_population: u32,
+    position: (i32, i32)
 }
 
 #[derive(Clone, PartialEq)]
-struct District {
-    district_type: DistrictType,
+pub (crate) struct District {
     is_completed: bool,
     derivatives_amount: u32,
     is_fertile: bool,
-    cell_keys: Vec<(i32, i32)>,
     max_size: usize,
+
+    pub district_type: DistrictType,
+    pub id: usize,
+    pub(crate) passenger_ids: Vec<usize>,
+    pub cells: Vec<(i32, i32)>,
 }
 
 impl Default for District {
     fn default() -> Self {
         Self {
-            district_type: DistrictType::Living,
+            district_type: DistrictType::Home,
             is_completed: false,
             derivatives_amount: 0,
             is_fertile: true,
-            cell_keys: vec![],
-            max_size: rand::random_range(0..40) + MAX_DISTRICT_SIZE
+            cells: vec![],
+            max_size: MAX_DISTRICT_SIZE,
+            id: 0,
+            passenger_ids: vec![]
         }
     }
 }
 
 #[derive(Resource, Default)]
 pub struct DistrictMap {
-    districts: Vec<District>,
-    cells: HashMap<(i32, i32), DistrictCell>,
+    pub(crate) districts: Vec<District>,
+    cells: Vec<(i32, i32)>,
 }
 
 fn test_gen_district(
     mut district_map: ResMut<DistrictMap>,
 ) {
     let mut district = District {
-        district_type: DistrictType::Living,
+        id: district_map.districts.len(),
+        district_type: DistrictType::Home,
         ..default()
     };
 
 
-    district.cell_keys.push((0,0));
-    district_map.cells.insert((0,0), DistrictCell { population: 0, max_population: 5 });
+    district.cells.push((0,0));
+    district_map.cells.push((0,0));
 
     district_map.districts.push(district);
 }
@@ -95,18 +101,17 @@ fn start_new_districts(
     for district in district_map.districts.clone().iter()
         .filter(|&dist| dist.is_completed && dist.derivatives_amount < 4 && dist.is_fertile) {
         
-        let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
-        district_map.districts[index].derivatives_amount+=1;
+        district_map.districts[district.id].derivatives_amount+=1;
 
         let random_type: DistrictType;
         match district.district_type {
             DistrictType::Entertainment => {
                 random_type = match rand::random_bool(0.5) {
-                    false => DistrictType::Living,
+                    false => DistrictType::Home,
                     true => DistrictType::Work,
                 };
             },
-            DistrictType::Living => {
+            DistrictType::Home => {
                 random_type = match rand::random_bool(0.5) {
                     false => DistrictType::Entertainment,
                     true => DistrictType::Work,
@@ -114,31 +119,29 @@ fn start_new_districts(
             },
             DistrictType::Work => {
                 random_type = match rand::random_bool(0.5) {
-                    false => DistrictType::Living,
+                    false => DistrictType::Home,
                     true => DistrictType::Entertainment,
                 };
             }
         }
 
         let mut border_points: Vec<(i32,i32)> = vec![]; 
-        for cell_key in district.cell_keys.iter() {
-            if let Some(_cell) = district_map.cells.get(cell_key) {
-                if !district_map.cells.contains_key(&(cell_key.0+1, cell_key.1)) {
-                    border_points.push((cell_key.0+1, cell_key.1));
-                    continue;
-                }
-                if !district_map.cells.contains_key(&(cell_key.0-1, cell_key.1)) {
-                    border_points.push((cell_key.0-1, cell_key.1));
-                    continue;
-                }
-                if !district_map.cells.contains_key(&(cell_key.0, cell_key.1+1)) {
-                    border_points.push((cell_key.0, cell_key.1+1));
-                    continue;
-                }
-                if !district_map.cells.contains_key(&(cell_key.0, cell_key.1-1)) {
-                    border_points.push((cell_key.0, cell_key.1-1));
-                    continue;
-                }
+        for cell in district.cells.iter() {
+            if !district_map.cells.contains(&(cell.0+1, cell.1)) {
+                border_points.push((cell.0+1, cell.1));
+                continue;
+            }
+            if !district_map.cells.contains(&(cell.0-1, cell.1)) {
+                border_points.push((cell.0-1, cell.1));
+                continue;
+            }
+            if !district_map.cells.contains(&(cell.0, cell.1+1)) {
+                border_points.push((cell.0, cell.1+1));
+                continue;
+            }
+            if !district_map.cells.contains(&(cell.0, cell.1-1)) {
+                border_points.push((cell.0, cell.1-1));
+                continue;
             }
         }
 
@@ -147,144 +150,88 @@ fn start_new_districts(
         }
 
         let new_district = District {
+            id: district_map.districts.len(),
             district_type: random_type,
-            cell_keys: vec![border_points[rand::random_range(0..border_points.len())]],
+            cells: vec![border_points[rand::random_range(0..border_points.len())]],
             is_fertile: rand::random_bool(0.7),
             ..default()
         };
 
-        district_map.cells.insert(new_district.cell_keys[0], DistrictCell { population: 0, max_population: 5 });
+        district_map.cells.push(new_district.cells[0]);
         district_map.districts.push(new_district);
     }
 }
 
 fn grow_districts(
     mut district_map: ResMut<DistrictMap>,
+    mut ev_add_passenger: EventWriter<AddPassengerEvent>, 
 ) {
     for district in district_map.districts.clone().iter().filter(|&dist| !dist.is_completed) {
-        if district.cell_keys.len() >= district.max_size {
-            let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
-            district_map.districts[index].is_completed=true;
+        if district.cells.len() >= district.max_size {
+            district_map.districts[district.id].is_completed=true;
             return;
         }
 
         let mut new_district = district.clone();
-        for cell_key in district.cell_keys.iter() {
-            if let Some(cell) = district_map.cells.get_mut(cell_key) {
-                if cell.population < cell.max_population {
-                    cell.population+=rand::random_range(0..3);
-                    continue;
-                }
-
-                if !district_map.cells.contains_key(&(cell_key.0+1, cell_key.1)) {
-                    district_map.cells.insert((cell_key.0+1, cell_key.1), DistrictCell { population: 0, max_population: 5 });
-                    new_district.cell_keys.push((cell_key.0+1, cell_key.1));
-                    break;
-                }
-                if !district_map.cells.contains_key(&(cell_key.0-1, cell_key.1)) {
-                    district_map.cells.insert((cell_key.0-1, cell_key.1), DistrictCell { population: 0, max_population: 5 });
-                    new_district.cell_keys.push((cell_key.0-1, cell_key.1));
-                    break;
-                }
-                if !district_map.cells.contains_key(&(cell_key.0, cell_key.1+1)) {
-                    district_map.cells.insert((cell_key.0, cell_key.1+1), DistrictCell { population: 0, max_population: 5 });
-                    new_district.cell_keys.push((cell_key.0, cell_key.1+1));
-                    break;
-                }
-                if !district_map.cells.contains_key(&(cell_key.0, cell_key.1-1)) {
-                    district_map.cells.insert((cell_key.0, cell_key.1-1), DistrictCell { population: 0, max_population: 5 });
-                    new_district.cell_keys.push((cell_key.0, cell_key.1-1));
-                    break;
-                }
-            }            
-        }
-
-        let index = district_map.districts.iter().position(|dist| *dist == *district).unwrap();
-        district_map.districts[index] = new_district;
-    }
-}
-
-fn get_angle(center: Vec2, point: Vec2) -> f32 {
-    let diff = point-center;
-    let mut angle = diff.y.atan2(diff.x);
-
-    if angle <= 0.0 {
-        angle += 2.*PI;
-    }
-
-    angle
-}
-
-fn get_distance(center: Vec2, point: Vec2) -> f32 {
-    let diff = point-center;
-    (diff.x.powi(2) + diff.y.powi(2)).sqrt()
-}
-
-// todo: make it better
-fn sort_border_points(
-    border_points: &mut Vec<Vec2>,
-) {
-    let centroid = Vec2::new(
-        border_points.iter().map(|&point| point.x).sum::<f32>() / border_points.len() as f32,
-        border_points.iter().map(|&point| point.y).sum::<f32>() / border_points.len() as f32
-    );
-
-    border_points.sort_by(|&a, &b| {        
-        let angle1 = get_angle(centroid, a);
-        let angle2 = get_angle(centroid, b);
-        
-        let hypotenouse1 = get_distance(centroid, a);
-        let hypotenouse2 = get_distance(centroid, b);
-
-        if angle1 < angle2 {
-            return Ordering::Less;
-        }
- 
-        if angle1 == angle2 && hypotenouse1 < hypotenouse2 {
-            return Ordering::Less;
-        }
-
-        return Ordering::Greater;
-
-        // (angle1, hypotenouse1).partial_cmp(&(angle2, hypotenouse2)).unwrap()
-    });
-}
-
-fn test_draw_district(
-    district_map: Res<DistrictMap>,
-    mut gizmos: Gizmos, 
-) {
-    for district in district_map.districts.clone().iter() {
-        let mut border_points: Vec<Vec2> = vec![]; 
-        for cell_key in district.cell_keys.iter() {
-            if let Some(_cell) = district_map.cells.get(cell_key) {
-                if district.cell_keys.contains(&(cell_key.0+1, cell_key.1)) &&
-                   district.cell_keys.contains(&(cell_key.0-1, cell_key.1)) &&
-                   district.cell_keys.contains(&(cell_key.0, cell_key.1+1)) &&
-                   district.cell_keys.contains(&(cell_key.0, cell_key.1-1)) {
-                    continue;
-                }
-                border_points.push(Vec2::new(cell_key.0 as f32, cell_key.1 as f32) * DISTRICT_CELL_SIZE);
+        for cell in district.cells.iter() {
+            if !district_map.cells.contains(&(cell.0+1, cell.1)) {
+                district_map.cells.push((cell.0+1, cell.1));
+                new_district.cells.push((cell.0+1, cell.1));
+                break;
+            }
+            if !district_map.cells.contains(&(cell.0-1, cell.1)) {
+                district_map.cells.push((cell.0-1, cell.1));
+                new_district.cells.push((cell.0-1, cell.1));
+                break;
+            }
+            if !district_map.cells.contains(&(cell.0, cell.1+1)) {
+                district_map.cells.push((cell.0, cell.1+1));
+                new_district.cells.push((cell.0, cell.1+1));
+                break;
+            }
+            if !district_map.cells.contains(&(cell.0, cell.1-1)) {
+                district_map.cells.push((cell.0, cell.1-1));
+                new_district.cells.push((cell.0, cell.1-1));
+                break;
             }
         }
-        sort_border_points(&mut border_points);
 
-        let Ok(curve) =
-            CubicCardinalSpline::new_catmull_rom(border_points.clone())
-                .to_curve_cyclic()
-        else { return };
+        // каждую вторую клетку добавляем пассажира в район (т.е. на 24 клетки района должно прийтись 12 пассажиров)
+        if new_district.cells.len() % 4 == 0
+        && new_district.district_type == DistrictType::Home {
+            ev_add_passenger.send(AddPassengerEvent {
+                district_id: district.id
+            });
+        }
 
-        let resolution = 100 * curve.segments().len();
-        gizmos.linestrip(
-            curve.iter_positions(resolution).map(|pt| pt.extend(0.0)),
-            district.district_type.color()
-        );
+        district_map.districts[district.id] = new_district;
+    }
+}
 
-        // for point in district.cell_keys.iter() {
-        //     gizmos.rect_2d(Isometry2d::from_xy(
-        //         point.0 as f32 * DISTRICT_CELL_SIZE,
-        //         point.1 as f32 * DISTRICT_CELL_SIZE
-        //     ), Vec2::splat(5.), district.district_type.color());
-        // }
+fn draw_district_cells (
+    mut commands: Commands,
+    q_cell: Query<&DistrictCell>,
+    district_map: Res<DistrictMap>,
+    mut meshes: ResMut<Assets<Mesh>>,
+    mut materials: ResMut<Assets<ColorMaterial>>,
+) {
+    let spawned_cells: Vec<(i32,i32)> = q_cell.iter().map(|cell| cell.position).collect();
+
+    // фильтруем клетки так, чтобы не спавнить повторно те, что уже заспавнены
+    for district in district_map.districts.iter() {
+        for cell in district.cells.iter()
+        .filter(|&cell| !spawned_cells.contains(cell)) {
+            let mesh = meshes.add(Rectangle::new(DISTRICT_CELL_SIZE, DISTRICT_CELL_SIZE));
+            let material = materials.add(district.district_type.color().with_alpha(0.5));
+
+            commands.spawn((
+                Mesh2d(mesh),
+                MeshMaterial2d(material),
+                DistrictCell { position: *cell },
+                Transform::from_xyz(
+                    cell.0 as f32 * DISTRICT_CELL_SIZE,
+                    cell.1 as f32 * DISTRICT_CELL_SIZE, -5.0)
+            ));
+        }
     }
 }

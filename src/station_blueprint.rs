@@ -1,6 +1,6 @@
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, GameState};
+use crate::{cursor::CursorPosition, GameState, DISTRICT_CELL_SIZE};
 
 #[derive(Component)]
 pub struct StationBlueprint {
@@ -35,7 +35,12 @@ fn stick_to_mouse(
     cursor_position: Res<CursorPosition>
 ) {
     for mut blueprint_transform in q_blueprint.iter_mut() {
-        blueprint_transform.translation = cursor_position.0.extend(1.0);
+        blueprint_transform.translation = 
+            Vec3::new(
+                (cursor_position.0.x / DISTRICT_CELL_SIZE).round() * DISTRICT_CELL_SIZE,
+                (cursor_position.0.y / DISTRICT_CELL_SIZE).round() * DISTRICT_CELL_SIZE,
+                1.0
+            );
     }
 }
 

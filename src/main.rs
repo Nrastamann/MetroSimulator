@@ -39,7 +39,7 @@ mod passenger;
 use passenger::PassengerPlugin;
 
 const DISTRICT_CELL_SIZE: f32 =  50.;
-const MAX_DISTRICT_SIZE: usize = 60;
+const MAX_DISTRICT_SIZE: usize = 24;
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
 pub enum GameState {

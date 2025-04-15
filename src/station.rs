@@ -6,7 +6,7 @@ use crate::{
     cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{
         Direction,
         Metro
-    }, passenger::Passenger, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent, GameState
+    }, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent, GameState
 };
 
 
@@ -38,7 +38,7 @@ impl Station {
 #[derive(Default, Component)]
 pub struct StationButton {
     pub selected: bool,
-    pub passengers: Vec<Passenger>,
+    pub passenger_ids: Vec<usize>,
 }
 
 #[derive(Event)]
@@ -71,21 +71,21 @@ fn spawn_station(
         ))
         .id();
 
-        let mut button = StationButton::default();
-        for _ in 0..rand::random_range(0..5) {
-            let mut destination_pool = vec![];
-            for line in metro.lines.iter() {
-                for station in line.stations.iter() {
-                    if rand::random_bool(0.5) {
-                        destination_pool.push(*station);
-                    }
-                }
-            }
-            button.passengers.push(Passenger {
-                destination_pool,
-                ..default()
-            });
-        }
+        let button = StationButton::default();
+        // for _ in 0..rand::random_range(0..5) {
+        //     let mut destination_pool = vec![];
+        //     for line in metro.lines.iter() {
+        //         for station in line.stations.iter() {
+        //             if rand::random_bool(0.5) {
+        //                 destination_pool.push(*station);
+        //             }
+        //         }
+        //     }
+        //     button.passengers.push(Passenger {
+        //         destination_pool,
+        //         ..default()
+        //     });
+        // }
 
         metro.stations.add(ev.connection, ev.position, station.clone());
         commands.spawn((
@@ -107,7 +107,7 @@ fn debug_draw_passengers(
     mut gizmos: Gizmos
 ) {
     for (transform, station) in q_station.iter() {
-        for i in 0..station.passengers.len() {
+        for i in 0..station.passenger_ids.len() {
             let position = transform.translation.truncate() + 40. * Vec2::from_angle((i as f32)*(PI/6.));
             gizmos.circle_2d(Isometry2d::from_translation(position), 5., Color::BLACK);
         }
@@ -160,7 +160,7 @@ fn build_new(
     mut ev_update_line_renderer: EventWriter<UpdateLineRendererEvent>,
     mut ev_spawn_line: EventWriter<SpawnLineCurveEvent>,
 ) {
-    if mouse.just_pressed(MouseButton::Left) { // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
+    if mouse.just_pressed(MouseButton::Left) { // определяем, будет это продолжение старой ветки или создание новой
         let Some((selected_station, _)) =
             q_station.iter()
             .filter(

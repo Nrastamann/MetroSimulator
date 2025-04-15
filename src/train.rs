@@ -1,8 +1,8 @@
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::{metro::{Direction, Metro}, passenger::Passenger, station::{Station, StationButton}};
+use crate::{metro::{Direction, Metro}, passenger::PassengerDatabase, station::{Station, StationButton}};
 
 #[allow(unused)]
 const TRAIN_STOP_TIME_SECS: f32 = 1.0;
@@ -27,7 +27,7 @@ pub struct SpawnTrainEvent {
 pub struct Train {
     line: usize,
     current: usize,
-    passengers: Vec<Passenger>,
+    passenger_ids: Vec<usize>,
     direction: Direction,
     last_stop_time: Duration,
 }
@@ -42,7 +42,7 @@ impl Train {
         Self {
             line,
             current: 0,
-            passengers: vec![],
+            passenger_ids: vec![],
             direction: Direction::Forwards,
             last_stop_time: Duration::from_millis(0),
         }
@@ -105,23 +105,26 @@ fn get_closest(positions: &Vec<Vec2>, target: &Vec2, direction: &Direction) -> (
 fn offload_passengers(
     station_button: &mut StationButton,
     station: &Station,
-    train: &mut Train 
-) -> Vec<Passenger> {
+    train: &mut Train,
+    passenger_database: &mut ResMut<PassengerDatabase>,
+) -> Vec<usize> {
     let mut offloading_passengers = vec![];
-    for passenger in train.passengers.iter() {
-        if passenger.destination_pool.contains(&station) {
-            offloading_passengers.push(passenger.clone());
+    for id in train.passenger_ids.iter() {
+        let passenger = passenger_database.0.get_mut(id).unwrap();
+        if passenger.destination_station.is_some_and(|st| st.position == station.position) {
+            offloading_passengers.push(*id);
         }
+        passenger.destination_station = None;
     }
 
-    train.passengers =
-        train.passengers.iter()
+    train.passenger_ids =
+        train.passenger_ids.iter()
         .filter(|&pass| !offloading_passengers.contains(pass))
         .map(|pass| pass.clone())
         .collect();
 
     let mut offloaded_passengers = vec![];
-    while station_button.passengers.len() < 12
+    while station_button.passenger_ids.len() < 12
     && offloading_passengers.len() > 0 {
         let offloading_passenger = offloading_passengers.pop().unwrap();
         offloaded_passengers.push(offloading_passenger);
@@ -133,24 +136,24 @@ fn offload_passengers(
 fn load_passengers(
     station_button: &mut StationButton,
     train: &mut Train,
-    offloaded_passengers: &mut Vec<Passenger>,
+    offloaded_passengers: &mut Vec<usize>,
 ) {
-    while train.passengers.len() < 6
-    && station_button.passengers.len() > 0 {
-        let loading_passenger = station_button.passengers.pop().unwrap();
-        train.passengers.push(loading_passenger);
+    while train.passenger_ids.len() < 6
+    && station_button.passenger_ids.len() > 0 {
+        let loading_passenger = station_button.passenger_ids.pop().unwrap();
+        train.passenger_ids.push(loading_passenger);
     }
 
-    station_button.passengers.append(offloaded_passengers);
+    station_button.passenger_ids.append(offloaded_passengers);
 }
 
-// bug: на не-конечных станциях поезд прокает остановку несколько раз
 fn move_train(
     mut commands: Commands,
     mut q_train: Query<(Entity, &mut Transform, &mut Train), Without<TrainStop>>,
     mut q_station_button: Query<(&mut StationButton, &Station)>,
     metro: Res<Metro>,
     time: Res<Time>,
+    mut passenger_database: ResMut<PassengerDatabase>,
 ) {
     for (e_train, mut train_transform, mut train) in q_train.iter_mut() {
         let line = &metro.lines[train.line];
@@ -164,10 +167,6 @@ fn move_train(
                 &train_transform.translation.truncate(),
                 &train.direction
             );
-
-        // if train.current == closest_index {
-        //     continue;
-        // }
 
         let closest_point_tuple = (
             closest_point.x.floor() as i32,
@@ -186,7 +185,7 @@ fn move_train(
                 .filter(|(_, station)| station.position == closest_point_tuple)
                 .next().unwrap();
 
-            let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train);
+            let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train, &mut passenger_database);
             load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
 
             train.last_stop_time = time.elapsed();
