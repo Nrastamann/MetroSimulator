@@ -12,7 +12,9 @@ impl Plugin for PassengerPlugin {
         app.add_event::<AddPassengerEvent>();
         app.add_systems(Update, (
             add_passengers,
-            decide_where_to_go,
+            stop_moving,
+            decide_where_to_go
+                .after(stop_moving),
             start_moving,
             fill_passenger_pool
                 // не слишком часто делаем проверки на заполненный пул мест пассажира
@@ -34,7 +36,6 @@ pub enum PassengerDesire {
 #[derive(Clone, PartialEq)]
 pub struct Passenger {
     pub current_desire: PassengerDesire,
-    pub last_visited_district: usize,
     pub district_ids: [usize; 3],
     pub destination_station: Option<Station>,
 }
@@ -55,7 +56,6 @@ fn add_passengers(
     for ev in ev_add_passenger.read() {
         let passenger = Passenger {
             current_desire: PassengerDesire::Home,
-            last_visited_district: ev.district_id,
             district_ids: [ev.district_id, 0, 0], // домашний район - район, в котором он создался
             destination_station: None
         };
@@ -208,6 +208,40 @@ fn start_moving(
                     district.passenger_ids.remove(remove_index);
                     break 'outer;
                 }
+            }
+        }
+    }
+}
+
+fn stop_moving(
+    database: Res<PassengerDatabase>,
+    mut district_map: ResMut<DistrictMap>,
+    metro: Res<Metro>,
+    mut q_station_button: Query<(&mut StationButton, &Station)>,
+) {
+    for line in metro.lines.iter() {
+        for station in line.stations.iter() {
+            let Some((mut station_button, _)) =
+            q_station_button.iter_mut()
+                .filter(|(_, &st)| station.position == st.position).next()
+            else { continue };
+
+            for passenger_id in station_button.passenger_ids.clone().iter() {
+                let Some(passenger) = database.0.get(passenger_id)
+                else {continue};
+                
+                if passenger.destination_station.is_some() {
+                    continue;
+                }
+
+                let district = &mut district_map.districts[passenger.district_ids[passenger.current_desire as usize]];
+                district.passenger_ids.push(*passenger_id);
+
+                let remove_index =
+                    station_button.passenger_ids.iter()
+                    .position(|id| id == passenger_id).unwrap();
+
+                station_button.passenger_ids.remove(remove_index);
             }
         }
     }

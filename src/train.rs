@@ -13,7 +13,13 @@ pub struct TrainPlugin;
 impl Plugin for TrainPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SpawnTrainEvent>();
-        app.add_systems(Update, (spawn_train, move_train, stop_train, switch_train_direction));
+        app.add_systems(Update, (
+            spawn_train,
+            move_train,
+            stop_train,
+            switch_train_direction,
+            update_train_text
+        ));
     }
 }
 
@@ -68,9 +74,11 @@ fn spawn_train(
             MeshMaterial2d(material),
             Transform::from_translation(Vec3::new(
                 position.0 as f32,
-                position.1 as f32, -1.0
+                position.1 as f32, 1.0
             )),
-            Train::new(ev.line)
+            Train::new(ev.line),
+        )).with_child((
+            Text2d::new("0"),
         ));
     }
 }
@@ -232,6 +240,21 @@ fn switch_train_direction(
         }
         if train.current == curve_positions.len()-1 && train.direction == Direction::Forwards {
             train.direction = Direction::Backwards;
+        }
+    }
+}
+
+fn update_train_text(
+    mut q_train_text: Query<(&mut Text2d, &Parent)>,
+    q_train: Query<(&Train, Entity)>
+) {
+    for (train, e_train) in q_train.iter() {
+        for (mut text, parent) in q_train_text.iter_mut() {
+            if e_train != parent.get() {
+                continue;
+            } 
+
+            text.0 = train.passenger_ids.len().to_string();
         }
     }
 }

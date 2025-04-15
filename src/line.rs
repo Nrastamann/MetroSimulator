@@ -92,7 +92,7 @@ fn spawn_line_curve(
                 colors,
                 thickness: 5.0
             },
-            LineRenderer { line_id: line.id }
+            LineRenderer { line_id: line.id },
         ));        
     }
 }
