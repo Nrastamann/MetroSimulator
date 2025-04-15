@@ -25,6 +25,21 @@ impl Metro {
         self.lines.push(line);
         &mut self.lines[id]
     }
+    pub fn find_line_by_station(&mut self, station_id: (i32, i32)) -> Option<&MetroLine> {
+        self.lines
+            .iter()
+            .filter(|line| {
+                line.stations
+                    .iter()
+                    .filter(|station| station.position == station_id)
+                    .next()
+                    .is_some()
+            })
+            .next()
+    }
+    pub fn find_station(&mut self, station_id: (i32, i32)) -> Option<&Station> {
+        self.find_line_by_station(station_id).unwrap().stations.iter().filter(|station| station.position == station_id).next()
+    }
 }
 
 #[derive(Default, PartialEq, Copy, Clone)]
@@ -37,9 +52,7 @@ pub enum Direction {
 #[derive(Default, Reflect, GizmoConfigGroup)]
 struct MetroLineGizmos {}
 
-fn config_gizmos(
-    mut config_store: ResMut<GizmoConfigStore>,
-) {
+fn config_gizmos(mut config_store: ResMut<GizmoConfigStore>) {
     let (config, _) = config_store.config_mut::<MetroLineGizmos>();
     config.line_width = 5.;
 }

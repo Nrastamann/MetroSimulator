@@ -4,7 +4,8 @@ use bevy_lunex::*;
 use crate::{
     camera::MainCamera,
     cursor::CursorPosition,
-    metro::Direction,
+    line::MetroLine,
+    metro::{Direction, Metro},
     station::{StartBuildingEvent, Station, StationButton},
     ui::main_menu::METRO_BLUE_COLOR,
     GameState,
@@ -19,6 +20,14 @@ pub const POPUP_HEIGHT: f32 = 192.;
 pub const OFFSET_STATS: f32 = 20.;
 pub const OFFSET_LINES: f32 = 20.;
 pub const BORDER_WIDTH: f32 = 96.;
+
+const POPUP_NAME: usize = 0;
+const POPUP_TRAINS_AMOUNT: usize = 1;
+const POPUP_AMOUNT_OF_PEOPLE: usize = 2;
+const POPUP_STATION_CAPACITY: usize = 3;
+const POPUP_LINE_HANDLER: usize = 4;
+const POPUP_STATION_BUTTON: usize = 9;
+
 #[derive(Bundle)]
 struct TextBundle {
     color: UiColor,
@@ -73,32 +82,58 @@ pub struct StationUIPlugin;
 impl Plugin for StationUIPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<TextboxResource>()
-            .add_event::<RedrawEvent>();
+            .init_resource::<LinesResource>()
+            .add_event::<RedrawEvent>()
+            .add_event::<ChangeLinesVisibility>()
+            .add_event::<RedrawPickedLineEvent>();
         app.add_systems(OnEnter(GameState::InGame), PopupMenu::draw_popup)
             .add_systems(
                 Update,
-                (redraw_menu, draw_menu).run_if(in_state(GameState::InGame)),
+                (
+                    redraw_menu,
+                    draw_menu,
+                    redraw_lines_menu,
+                    change_visibility_of_lines,
+                )
+                    .run_if(in_state(GameState::InGame)),
             );
     }
 }
-
+#[derive(Event)]
+pub struct RedrawPickedLineEvent {
+    picked_line_prev: usize,
+    picked_line_now: usize,
+}
+#[derive(Component)]
+struct NewStationFlag {
+    can_continue: bool,
+}
+#[derive(Component)]
+struct LineHandlerFlag {
+    line_id: usize,
+}
+#[derive(Event)]
+pub struct ChangeLinesVisibility {
+    pub show: bool,
+}
 #[derive(Event)]
 pub struct RedrawEvent {
     change_text: bool,
     station: Option<(i32, i32)>,
-    name: Option<String>,
 }
 #[derive(Resource, Default)]
 pub struct TextboxResource {
     entities: Vec<Entity>, //
 }
+
 #[derive(Component)]
 pub struct PopupMenu {
     pub station: (i32, i32),
+    pub picked_line: usize,
 }
 #[derive(Resource, Default)]
-pub struct CheckCheckCheck {
-    pub ent: Option<Entity>,
+pub struct LinesResource {
+    pub entities: Vec<Entity>,
 }
 impl PopupMenu {
     fn draw_popup(
@@ -107,6 +142,7 @@ impl PopupMenu {
         asset_server: Res<AssetServer>,
         cursor_pos: Res<CursorPosition>,
         mut popup_textboxes: ResMut<TextboxResource>,
+        mut popup_lines: ResMut<LinesResource>,
     ) {
         let camera = camera_q.get_single().unwrap();
         commands
@@ -122,7 +158,10 @@ impl PopupMenu {
                     cursor_pos.0.y - POPUP_HEIGHT / 2. * camera.target_zoom,
                     1.,
                 ),
-                PopupMenu { station: (0, 0) },
+                PopupMenu {
+                    station: (0, 0),
+                    picked_line: 0,
+                },
             ))
             .with_children(|ui| {
                 ui.spawn((
@@ -150,6 +189,7 @@ impl PopupMenu {
                             ui.spawn((
                                 Name::new("Station name"),
                                 UiLayout::window()
+                                    .x(Rl(100.))
                                     //37.5
                                     .anchor_center()
                                     .pack(),
@@ -270,24 +310,62 @@ impl PopupMenu {
                         .with_children(|ui| {
                             let line_size = 20.;
                             let mut height_off = 0.;
-                            for i in 0..5{
-                                ui.spawn((
-                                    Name::new("Line Handler "),
-                                    UiLayout::window().anchor_left().rl_size(100.,line_size).rl_pos(0.,height_off).pack(),
-                                )).with_children(|ui|{
-                                    ui.spawn(( //need to save this, to delete&redraw it as picked
-                                        Name::new("line"),
-                                        UiLayout::window().anchor_center().full().pack(),
-                                    )).with_children(|ui|{
-                                        let text = format!("Линия {}",i + 1);
-                                        ui.spawn((
-                                            Name::new("line name"),
-                                            UiLayout::window().anchor_center().pack(),
-                                            TextBundle::default_text(Color::WHITE,asset_server.load(UI_FONT),100.,text),
-                                        ));
-                                    });
-                                });
-                            height_off += line_size;
+                            for i in 0..5 {
+                                popup_lines.entities.push(
+                                    ui.spawn((
+                                        Name::new("Line Handler "),
+                                        UiLayout::window()
+                                            .anchor_left()
+                                            .rl_size(100., line_size)
+                                            .rl_pos(0., height_off)
+                                            .pack(),
+                                        LineHandlerFlag { line_id: i },
+                                        Sprite::default(),
+                                        UiColor::from(METRO_BLUE_COLOR),
+                                        Visibility::Hidden,
+                                    ))
+                                    .with_children(|ui| {
+                                        let text = format!("Линия {}", i + 1);
+                                        popup_textboxes.entities.push(
+                                            ui.spawn((
+                                                Name::new("line name"),
+                                                UiLayout::window().anchor_center().pack(),
+                                                TextBundle::default_text(
+                                                    Color::WHITE,
+                                                    asset_server.load(UI_FONT),
+                                                    100.,
+                                                    text,
+                                                ),
+                                                Visibility::Inherited,
+                                            ))
+                                            .id(),
+                                        );
+                                    })
+                                    .observe(
+                                        |clck: Trigger<Pointer<Click>>,
+                                         mut lines_handler_q: Query<&mut LineHandlerFlag>,
+                                         mut ui_root_q: Query<
+                                            &mut PopupMenu,
+                                            With<UiLayoutRoot>,
+                                        >,
+                                         mut redraw_lines_ev: EventWriter<
+                                            RedrawPickedLineEvent,
+                                        >| {
+                                            let mut root = ui_root_q.get_single_mut().unwrap();
+                                            let prev_line = root.picked_line;
+                                            root.picked_line = lines_handler_q
+                                                .get_mut(clck.target)
+                                                .unwrap()
+                                                .line_id;
+                                            redraw_lines_ev.send(RedrawPickedLineEvent {
+                                                picked_line_prev: prev_line,
+                                                picked_line_now: root.picked_line,
+                                            });
+                                        },
+                                    )
+                                    .id(),
+                                );
+                                height_off += line_size;
                             }
                         });
                         ui.spawn((
@@ -297,52 +375,85 @@ impl PopupMenu {
                         .with_children(|ui| {
                             let mut offset_buttons = 0.;
                             for i in RMB_BUTTONS {
-                                let button_entity = ui.spawn((
+                                let mut button_entity = ui.spawn((
                                     Name::new("Button handler"),
                                     UiLayout::window()
                                         .x(Rl(offset_buttons))
                                         .size(Rl((50., 100.)))
                                         .anchor(Anchor::TopLeft)
                                         .pack(),
-                                ))
-                                .with_children(|ui| {
-                                    ui.spawn((
-                                        Name::new("Button"),
-                                        UiLayout::window().full().pack(),
-                                        Sprite::default(),
-                                        UiHover::new().forward_speed(20.0).backward_speed(4.0),
-                                        UiColor::new(vec![
-                                            (UiBase::id(), METRO_BLUE_COLOR),
-                                            (UiHover::id(), Color::WHITE),
-                                        ]),
-                                    ))
+                                ));
+                                button_entity
                                     .with_children(|ui| {
                                         ui.spawn((
-                                            Name::new(i),
-                                            UiLayout::window().anchor_center().pack(),
+                                            Name::new("Button"),
+                                            UiLayout::window().full().pack(),
+                                            Sprite::default(),
                                             UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                             UiColor::new(vec![
-                                                (UiBase::id(), Color::WHITE),
-                                                (UiHover::id(), METRO_BLUE_COLOR),
+                                                (UiBase::id(), METRO_BLUE_COLOR),
+                                                (UiHover::id(), Color::WHITE),
                                             ]),
-                                            UiTextSize::from(Rh(70.)),
-                                            Text2d::new(i),
-                                            TextFont {
-                                                font: asset_server.load(UI_FONT),
-                                                font_size: 96.,
-                                                ..default()
+                                        ))
+                                        .with_children(
+                                            |ui| {
+                                                popup_textboxes.entities.push(
+                                                    ui.spawn((
+                                                        Name::new(i),
+                                                        UiLayout::window().anchor_center().pack(),
+                                                        UiHover::new()
+                                                            .forward_speed(20.0)
+                                                            .backward_speed(4.0),
+                                                        UiColor::new(vec![
+                                                            (UiBase::id(), Color::WHITE),
+                                                            (UiHover::id(), METRO_BLUE_COLOR),
+                                                        ]),
+                                                        UiTextSize::from(Rh(70.)),
+                                                        Text2d::new(i),
+                                                        TextFont {
+                                                            font: asset_server.load(UI_FONT),
+                                                            font_size: 96.,
+                                                            ..default()
+                                                        },
+                                                        PickingBehavior::IGNORE,
+                                                    ))
+                                                    .id(),
+                                                );
                                             },
-                                            PickingBehavior::IGNORE,
-                                        ));
-                                    });
-                                })
-                                .observe(hover_set::<Pointer<Over>, true>)
-                                .observe(hover_set::<Pointer<Out>, false>)
-                                .observe(|_:Trigger<Pointer<Click>>, mut new_station: EventWriter<StartBuildingEvent>|{
-                                    let mut line = 0;
-                                    //pass there something like query
-                                    new_station.send(StartBuildingEvent { connection: (0,0), direction: Direction::Forwards, line_to_attach: 0 });
-                                });
+                                        );
+                                    })
+                                    .observe(hover_set::<Pointer<Over>, true>)
+                                    .observe(hover_set::<Pointer<Out>, false>);
+
+                                match i {
+                                    "Новая линия" => {
+                                        button_entity.observe(
+                                            |_: Trigger<Pointer<Click>>,
+                                             mut new_station: EventWriter<StartBuildingEvent>,
+                                             mut ui_root_q: Query<
+                                                (&mut Visibility, &PopupMenu),
+                                                With<UiLayoutRoot>,
+                                            >| {
+                                                let (mut vision, position) =
+                                                    ui_root_q.get_single_mut().unwrap();
+                                                new_station.send(StartBuildingEvent {
+                                                    connection: position.station,
+                                                    direction: Direction::Forwards,
+                                                    line_to_attach: usize::MAX,
+                                                    from_menu: true,
+                                                });
+                                                *vision = Visibility::Hidden;
+                                            },
+                                        );
+                                    }
+                                    "Новая станция" => {
+                                        button_entity.insert(NewStationFlag { can_continue: true });
+                                    }
+                                    _ => {
+                                        println!("{i}");
+                                        panic!("NONAME BUTTON");
+                                    }
+                                }
                                 offset_buttons += 50.;
                             }
                         });
@@ -352,12 +463,119 @@ impl PopupMenu {
     }
 }
 
+fn redraw_lines_menu(
+    mut redraw_linev_ev: EventReader<RedrawPickedLineEvent>,
+    mut button_q: Query<
+        (&mut NewStationFlag, &Children),
+        (Without<LineHandlerFlag>, Without<Text2d>),
+    >,
+    mut text_query: Query<&mut UiColor, (With<UiLayout>, Without<LineHandlerFlag>, With<Text2d>)>,
+    mut root: Query<&mut PopupMenu, (With<UiLayoutRoot>, Without<LineHandlerFlag>)>,
+    mut metro: ResMut<Metro>,
+    mut line_handlers_q: Query<
+        (&mut UiColor, &mut LineHandlerFlag, &mut Children),
+        Without<Text2d>,
+    >,
+    mut ui_color_button_q: Query<
+        &mut UiColor,
+        (
+            Without<LineHandlerFlag>,
+            Without<NewStationFlag>,
+            Without<Text2d>,
+        ),
+    >,
+    text_references: Res<TextboxResource>,
+) {
+    for ev in redraw_linev_ev.read() {
+        let Ok(menu) = root.get_single_mut() else {
+            panic!("Error: Popup is not founded");
+        };
+        for (mut color, _previous_handler, child_prev) in line_handlers_q.iter_mut() {
+            *color = UiColor::from(METRO_BLUE_COLOR);
+
+            *text_query
+                .get_mut(*child_prev.iter().next().unwrap())
+                .unwrap() = UiColor::from(Color::WHITE);
+        }
+        /*
+                let (mut color, _previous_handler, child_prev) = line_handlers_q
+                    .iter_mut()
+                    .filter(|(_, line_numb, _)| line_numb.line_id == ev.picked_line_prev)
+                    .next().unwrap();
+                *color = UiColor::from(METRO_BLUE_COLOR);
+
+                *text_query
+                    .get_mut(*child_prev.iter().next().unwrap())
+                    .unwrap() = UiColor::from(Color::WHITE);
+        */
+        let (mut color_new, _new_handler, child_now) = line_handlers_q
+            .iter_mut()
+            .filter(|(_, line_numb, _)| line_numb.line_id == ev.picked_line_now)
+            .next()
+            .unwrap();
+        *color_new = UiColor::from(Color::WHITE);
+
+        *text_query
+            .get_mut(*child_now.iter().next().unwrap())
+            .unwrap() = UiColor::from(Color::BLACK);
+
+        let (mut button_press, button_child) = button_q.get_single_mut().unwrap();
+
+        *ui_color_button_q
+            .get_mut(*button_child.iter().next().unwrap())
+            .unwrap() = UiColor::new(vec![
+            (UiBase::id(), METRO_BLUE_COLOR),
+            (UiHover::id(), Color::WHITE),
+        ]);
+
+        *text_query
+            .get_mut(text_references.entities[POPUP_STATION_BUTTON])
+            .unwrap() = UiColor::new(vec![
+            (UiBase::id(), Color::WHITE),
+            (UiHover::id(), METRO_BLUE_COLOR),
+        ]);
+
+        button_press.can_continue = true;
+
+        let line = metro
+            .lines
+            .iter()
+            .filter(|line| line.id == ev.picked_line_now)
+            .next()
+            .unwrap()
+            .clone();
+
+        let popup_station = metro.find_station(menu.station).unwrap().clone();
+
+        if !(*line.stations.front().unwrap() == popup_station)
+            && !(*line.stations.back().unwrap() == popup_station)
+        {
+            *ui_color_button_q
+                .get_mut(*button_child.iter().next().unwrap())
+                .unwrap() = UiColor::new(vec![
+                (UiBase::id(), Color::hsv(0., 0., 74.)),
+                (UiHover::id(), Color::hsv(0., 0., 74.)),
+            ]);
+
+            *text_query
+                .get_mut(text_references.entities[POPUP_STATION_BUTTON])
+                .unwrap() = UiColor::new(vec![
+                (UiBase::id(), Color::BLACK),
+                (UiHover::id(), Color::BLACK),
+            ]);
+            println!("{}", text_references.entities.len(),);
+            button_press.can_continue = false;
+        }
+    }
+}
+
 fn draw_menu(
     q_station: Query<(&Station, &StationButton)>,
     mut draw_popup: EventWriter<RedrawEvent>,
     mouse: Res<ButtonInput<MouseButton>>,
     cursor_pos: Res<CursorPosition>,
     mut popup_q: Query<(&mut Visibility, &PopupMenu, &Dimension, &Transform), With<UiLayoutRoot>>,
+    mut ev_change_vision: EventWriter<ChangeLinesVisibility>,
 ) {
     let check = mouse.just_pressed(MouseButton::Left);
     if mouse.just_pressed(MouseButton::Right) || check {
@@ -365,8 +583,7 @@ fn draw_menu(
             panic!("Error: Popup is not founded");
         };
 
-        let Some((selected_station, station_name)) =
-            q_station.iter().filter(|(_, btn)| btn.selected).next()
+        let Some((selected_station, _)) = q_station.iter().filter(|(_, btn)| btn.selected).next()
         else {
             if check {
                 if cursor_pos.0.x > pos.translation.x + (size.x / 2.).floor()
@@ -375,13 +592,16 @@ fn draw_menu(
                     || cursor_pos.0.y < pos.translation.y - (size.y / 2.).floor()
                 {
                     *popup_visibility = Visibility::Hidden;
+
+            ev_change_vision.send(ChangeLinesVisibility { show: false });
                 }
                 return;
             }
+
+            ev_change_vision.send(ChangeLinesVisibility { show: false });
             *popup_visibility = Visibility::Hidden;
             return;
         };
-
         let mut redraw = false;
         if selected_station.position != menu.station {
             redraw = true;
@@ -390,40 +610,130 @@ fn draw_menu(
             draw_popup.send(RedrawEvent {
                 change_text: redraw,
                 station: Some(selected_station.position),
-                name: Some(station_name.name.clone()),
             });
         }
     }
 }
 fn redraw_menu(
     mut redraw_popup: EventReader<RedrawEvent>,
-    mut text_query: Query<&mut Text2d, Without<UiLayoutRoot>>,
-    mut root: Query<&mut Transform, (With<PopupMenu>, With<UiLayoutRoot>)>,
+    mut text_query: Query<&mut Text2d, (With<UiLayout>, Without<LineHandlerFlag>)>,
+    mut root: Query<
+        (&mut Transform, &mut Visibility, &mut PopupMenu),
+        (With<UiLayoutRoot>, Without<LineHandlerFlag>),
+    >,
     text_references: Res<TextboxResource>,
     cursor_pos: Res<CursorPosition>,
-    mut popup_q: Query<&mut Visibility, (With<PopupMenu>, With<UiLayoutRoot>)>,
     camera_q: Query<&MainCamera>,
+    metro: Res<Metro>,
+    mut line_handlers_q: Query<(&mut Visibility, &mut LineHandlerFlag), Without<Text2d>>,
+    line_handler_resource: Res<LinesResource>,
+    mut redraw_linev_ev: EventWriter<RedrawPickedLineEvent>,
+    station_q: Query<(&Station, &StationButton)>,
 ) {
     for ev in redraw_popup.read() {
-        if ev.change_text {
-            //            for i in text_references.entities.clone() {
-            //                let mut text = text_query.get_mut(i).unwrap();
-            //                text.0 = "sosal".to_string();
-            //            }
+        let (mut position, mut popup_visibility, mut popup_station) =
+            root.get_single_mut().unwrap();
+
+        //===================================START OF LINES VISUALISATION====================================================================
+        // setup lines, where
+        let mut lines_vec: Vec<MetroLine> = vec![];
+        let mut line_iter = metro.lines.iter().filter(|line| {
+            line.stations
+                .iter()
+                .filter(|station| station.position == ev.station.unwrap())
+                .next()
+                .is_some()
+        });
+        let mut line = line_iter.next();
+
+        while line.is_some() {
+            lines_vec.push(line.unwrap().clone());
+            line = line_iter.next();
         }
-        let mut position = root.get_single_mut().unwrap();
+        redraw_linev_ev.send(RedrawPickedLineEvent {
+            picked_line_prev: popup_station.picked_line,
+            picked_line_now: lines_vec[0].id,
+        });
+
+        popup_station.picked_line = lines_vec[0].id;
+
+        popup_station.station = ev.station.unwrap();
+        let mut line_position = 0;
+        for i in 0..lines_vec.len() {
+            line_position += 1;
+            let Ok((mut vision, mut line_number)) =
+                line_handlers_q.get_mut(line_handler_resource.entities[i])
+            else {
+                panic!("NO VISIBILITY IN LINE HANDLER!");
+            };
+            line_number.line_id = lines_vec[i].id;
+            *vision = Visibility::Visible;
+        }
+        for i in line_position..5 {
+            let Ok((mut vision, mut line_number)) =
+                line_handlers_q.get_mut(line_handler_resource.entities[i])
+            else {
+                panic!("NO VISIBILITY IN LINE HANDLER!");
+            };
+            *vision = Visibility::Hidden;
+            line_number.line_id = usize::MAX;
+        }
+
+        //===================================END OF LINES VISUALISATION====================================================================
+        //there i change text by iterating through entities
+        let (_station, station_info) = station_q
+            .iter()
+            .filter(|(stn, _)| stn.position == popup_station.station)
+            .next()
+            .unwrap();
+
+        text_query
+            .get_mut(text_references.entities[POPUP_NAME])
+            .unwrap()
+            .0 = station_info.name.clone();
+
+        text_query
+            .get_mut(text_references.entities[POPUP_AMOUNT_OF_PEOPLE])
+            .unwrap()
+            .0 = station_info.passengers.len().to_string();
+
+        text_query
+            .get_mut(text_references.entities[POPUP_STATION_CAPACITY])
+            .unwrap()
+            .0 = "12".to_string(); //station_info.name.clone(); потом лимит поставтиь
+
+        text_query
+            .get_mut(text_references.entities[POPUP_TRAINS_AMOUNT])
+            .unwrap()
+            .0 = "1".to_string();
+
+        for i in POPUP_LINE_HANDLER..9 + lines_vec.len() - 5 {
+            text_query.get_mut(text_references.entities[i]).unwrap().0 =
+                lines_vec[i - POPUP_LINE_HANDLER].name.clone();
+        }
 
         let camera = camera_q.get_single().unwrap();
 
         *position = Transform::from_xyz(
             cursor_pos.0.x + POPUP_WIDTH / 2. * camera.target_zoom,
             cursor_pos.0.y - POPUP_HEIGHT / 2. * camera.target_zoom,
-            0.,
+            10.,
         );
-        let Ok(mut popup_visibility) = popup_q.get_single_mut() else {
-            panic!("Error: Popup is not founded");
-        };
-
         *popup_visibility = Visibility::Visible;
+    }
+}
+fn change_visibility_of_lines(
+    mut ev_change_vision: EventReader<ChangeLinesVisibility>,
+    lines: Res<LinesResource>,
+    mut lines_q: Query<&mut Visibility>,
+) {
+    for ev in ev_change_vision.read() {
+        let mut vision = Visibility::Hidden;
+        if ev.show {
+            vision = Visibility::Visible;
+        }
+        for i in lines.entities.clone() {
+            *lines_q.get_mut(i).unwrap() = vision;
+        }
     }
 }
