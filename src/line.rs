@@ -15,6 +15,8 @@ impl Plugin for MetroLinePlugin {
     }
 }
 
+pub const LINE_NAMES: [&str;10] = ["Линия 1","Линия 2","Линия 3","Линия 4","Линия 5","Линия 6","Линия 7","Линия 8","Линия 9","Линия 10"];
+
 #[derive(PartialEq, Clone)]
 pub struct MetroLine {
     pub name: String,
@@ -59,9 +61,6 @@ impl MetroLine {
             name: LINE_NAMES[rand::rng().random_range(0..9)].to_string(),
             id,
             stations: LinkedList::new(),
-            points: new_points,
-            id,
-            stations,
             curve,
             color: Color::hsl(rng.random_range(0..=12) as f32 * 30., 0.5, 0.5),
         }
