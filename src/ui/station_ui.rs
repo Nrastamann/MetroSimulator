@@ -113,9 +113,7 @@ struct LineHandlerFlag {
     line_id: usize,
 }
 #[derive(Event)]
-pub struct ChangeLinesVisibility {
-    pub show: bool,
-}
+pub struct ChangeLinesVisibility;
 #[derive(Event)]
 pub struct RedrawEvent {
     change_text: bool,
@@ -447,7 +445,57 @@ impl PopupMenu {
                                         );
                                     }
                                     "Новая станция" => {
-                                        button_entity.insert(NewStationFlag { can_continue: true });
+                                        button_entity
+                                            .insert(NewStationFlag { can_continue: true })
+                                            .observe(
+                                                |_: Trigger<Pointer<Click>>,
+                                                 mut new_station: EventWriter<
+                                                    StartBuildingEvent,
+                                                >,
+                                                 button_q: Query<&NewStationFlag>,
+                                                 mut ui_root_q: Query<
+                                                    (&mut Visibility, &PopupMenu),
+                                                    With<UiLayoutRoot>,
+                                                >,
+                                                 mut metro: ResMut<Metro>,
+                                                 mut ev_change_vision: EventWriter<
+                                                    ChangeLinesVisibility,
+                                                >| {
+                                                    let (mut vision, position) =
+                                                        ui_root_q.get_single_mut().unwrap();
+                                                    let button_flag =
+                                                        button_q.get_single().unwrap();
+                                                    if !button_flag.can_continue {
+                                                        return;
+                                                    }
+                                                    let line = metro
+                                                        .lines
+                                                        .iter()
+                                                        .filter(|line| {
+                                                            line.id == position.picked_line
+                                                        })
+                                                        .next()
+                                                        .unwrap()
+                                                        .clone();
+
+                                                    let mut direction = Direction::Forwards;
+
+                                                    if line.stations.front()
+                                                        == metro.find_station(position.station)
+                                                    {
+                                                        direction = Direction::Backwards;
+                                                    }
+
+                                                    new_station.send(StartBuildingEvent {
+                                                        connection: position.station,
+                                                        direction: direction,
+                                                        line_to_attach: position.picked_line,
+                                                        from_menu: true,
+                                                    });
+                                                    *vision = Visibility::Hidden;
+                                                    ev_change_vision.send(ChangeLinesVisibility);
+                                                },
+                                            );
                                     }
                                     _ => {
                                         println!("{i}");
@@ -593,12 +641,12 @@ fn draw_menu(
                 {
                     *popup_visibility = Visibility::Hidden;
 
-            ev_change_vision.send(ChangeLinesVisibility { show: false });
+                    ev_change_vision.send(ChangeLinesVisibility);
                 }
                 return;
             }
 
-            ev_change_vision.send(ChangeLinesVisibility { show: false });
+            ev_change_vision.send(ChangeLinesVisibility);
             *popup_visibility = Visibility::Hidden;
             return;
         };
@@ -728,12 +776,8 @@ fn change_visibility_of_lines(
     mut lines_q: Query<&mut Visibility>,
 ) {
     for ev in ev_change_vision.read() {
-        let mut vision = Visibility::Hidden;
-        if ev.show {
-            vision = Visibility::Visible;
-        }
         for i in lines.entities.clone() {
-            *lines_q.get_mut(i).unwrap() = vision;
+            *lines_q.get_mut(i).unwrap() = Visibility::Hidden;
         }
     }
 }
