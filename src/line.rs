@@ -15,7 +15,7 @@ impl Plugin for MetroLinePlugin {
     }
 }
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Clone)]
 pub struct MetroLine {
     pub name: String,
     pub id: usize,

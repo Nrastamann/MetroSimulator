@@ -1,6 +1,7 @@
 use std::{f32::consts::PI, usize};
 
 use bevy::prelude::*;
+use rand::Rng;
 
 use crate::{
     cursor::CursorPosition,
@@ -71,6 +72,7 @@ pub struct StartBuildingEvent {
     pub connection: (i32, i32),
     pub direction: Direction,
     pub line_to_attach: usize,
+    pub from_menu: bool,
 }
 
 #[derive(Event)]
@@ -110,6 +112,8 @@ fn spawn_station(
             .id();
 
         let mut button = StationButton::default();
+        button.name = STATION_NAMES[rand::rng().random_range(0..10)].to_string();
+        println!("name - {}", button.name);
         for _ in 0..rand::random_range(0..5) {
             let mut destination_pool = vec![];
             for line in metro.lines.iter() {
@@ -199,11 +203,11 @@ fn build_new(
                 if line.stations.front().unwrap() == selected_station {
                     direction = Direction::Backwards;
                 }
-                println!("wtf?");
                 ev_start_build.send(StartBuildingEvent {
                     connection: selected_station.position,
                     direction: direction,
                     line_to_attach: line.id,
+                    from_menu: false,
                 });
                 ev_set_blueprint.send(
                     // todo: make color match the line
@@ -271,10 +275,12 @@ fn detect_left_release(
         let Ok((mut blueprint, mut vision)) = blueprint_q.get_single_mut() else {
             panic!("NO BLUEPRINT");
         };
-
+        if blueprint.menu_flag {
+            blueprint.menu_flag = false;
+            return;
+        }
         if !blueprint.can_build || *vision == Visibility::Hidden {
             *vision = Visibility::Hidden;
-            println!("FUCK, {}", blueprint.can_build);
             return;
         }
 
@@ -285,7 +291,6 @@ fn detect_left_release(
         }
 
         *vision = Visibility::Hidden;
-        println!("You've got there");
         ev_build_station.send(BuildStationEvent {
             position: position,
             connection: blueprint.connection,
@@ -311,10 +316,10 @@ fn check_building_position(
         panic!("NO BLUEPRINT!");
     };
 
-    if blueprint.line_to_attach == usize::MAX{
+    if blueprint.line_to_attach == usize::MAX {
         return;
     }
-    
+
     let sorted: Vec<(&Transform, &Station)> = q_stations
         .iter()
         .sort_by::<&Transform>(|t1, t2| {

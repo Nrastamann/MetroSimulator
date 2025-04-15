@@ -8,7 +8,8 @@ pub struct StationBlueprint {
     pub connection: (i32, i32),
     pub direction: Direction,
     pub line_to_attach: usize, //if we want to add new line, send -1
-    pub can_build: bool
+    pub can_build: bool,
+    pub menu_flag: bool,
 }
 
 pub struct StationBlueprintPlugin;
@@ -39,6 +40,7 @@ fn init_blueprint(
             direction: Direction::Forwards,
             line_to_attach: 0,
             can_build: true,
+            menu_flag: false,
         },
         Visibility::Hidden,
     ));
@@ -82,7 +84,7 @@ fn start_building(
         blueprint.connection = ev.connection;
         blueprint.direction = ev.direction;
         blueprint.line_to_attach = ev.line_to_attach;
-        println!("gotem");
+        blueprint.menu_flag = ev.from_menu;
         *vision = Visibility::Visible;
     }
 }
