@@ -144,11 +144,16 @@ fn decide_where_to_go(
         for line in metro.lines.iter() {
             for station in line.stations.iter() {
                 for cell in district.cells.iter() {
-                    if (station.position.0 - cell.0).abs() as f32 <= DISTRICT_CELL_SIZE / 2.
-                    && (station.position.1 - cell.1).abs() as f32 <= DISTRICT_CELL_SIZE / 2. {
-                        passenger.destination_station = Some(*station);
-                        break;
+                    let cell_position = Vec2::new(cell.0 as f32, cell.1 as f32) * DISTRICT_CELL_SIZE;
+                    let station_position = Vec2::new(station.position.0 as f32, station.position.1 as f32);
+                    let distance = cell_position.distance(station_position);
+
+                    if distance > DISTRICT_CELL_SIZE / 2. {
+                        continue;
                     }
+
+                    passenger.destination_station = Some(*station);
+                    break;
                 }
             }
         }
@@ -170,7 +175,6 @@ fn start_moving(
             }
 
             let mut stations = vec![];
-
             for line in metro.lines.iter_mut() {
                 stations.append(&mut line.stations.iter().collect::<Vec<&Station>>());
             }
