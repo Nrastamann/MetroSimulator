@@ -743,7 +743,7 @@ fn redraw_menu(
         text_query
             .get_mut(text_references.entities[POPUP_AMOUNT_OF_PEOPLE])
             .unwrap()
-            .0 = station_info.passengers.len().to_string();
+            .0 = station_info.passenger_ids.len().to_string();
 
         text_query
             .get_mut(text_references.entities[POPUP_STATION_CAPACITY])

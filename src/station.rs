@@ -64,6 +64,7 @@ impl Station {
 pub struct StationButton {
     pub selected: bool,
     pub passenger_ids: Vec<usize>,
+    pub name: String,
 }
 
 #[derive(Event)]
@@ -110,7 +111,9 @@ fn spawn_station(
             ))
             .id();
 
-        let button = StationButton::default();
+        let mut button = StationButton::default();
+        button.name = STATION_NAMES[rand::rng().random_range(0..10)].to_string();
+        // println!("name - {}", button.name);
         // for _ in 0..rand::random_range(0..5) {
         //     let mut destination_pool = vec![];
         //     for line in metro.lines.iter() {

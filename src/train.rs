@@ -260,56 +260,6 @@ fn move_train(
 
         train.current = closest_index;
 
-        let closest_point_tuple = (
-            closest_point.x.floor() as i32,
-            closest_point.y.floor() as i32,
-        );
-
-        // проверяем, если текущая точка пути совпадает с позицией станции и нужно сделать остановку
-        if line.stations.iter()
-            .map(|station| station.position)
-            .collect::<Vec<(i32, i32)>>()
-            .contains(&closest_point_tuple)
-        {
-            let (mut btn, station) =
-                q_station_button.iter_mut()
-                .filter(|(_, station)| station.position == closest_point_tuple)
-                .next().unwrap();
-
-
-            let mut offloading_passengers = vec![];
-            for passenger in train.passengers.iter() {
-                if passenger.destination_pool.contains(&station) {
-                    offloading_passengers.push(passenger.clone());
-                }
-            }
-
-            train.passengers =
-                train.passengers.iter()
-                .filter(|&pass| !offloading_passengers.contains(pass))
-                .map(|pass| pass.clone())
-                .collect();
-
-            let mut offloaded_passengers = vec![];
-            while btn.passengers.len() < 12
-            && offloading_passengers.len() > 0 {
-                let offloading_passenger = offloading_passengers.pop().unwrap();
-                offloaded_passengers.push(offloading_passenger);
-            }
-
-            while train.passengers.len() < 6
-            && btn.passengers.len() > 0 {
-                let loading_passenger = btn.passengers.pop().unwrap();
-                train.passengers.push(loading_passenger);
-            }
-
-            btn.passengers.append(&mut offloaded_passengers);
-
-            // commands.entity(e_train).insert(TrainStop { timer: Timer::from_seconds(TRAIN_STOP_TIME_SECS, TimerMode::Once) });
-        }
-        
-        train.current = closest_index;
-
         let diff = closest_point.extend(train_transform.translation.z) - train_transform.translation;
         let angle = diff.y.atan2(diff.x);
         train_transform.rotation = train_transform
