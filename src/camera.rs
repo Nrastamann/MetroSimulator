@@ -102,7 +102,7 @@ fn zoom_camera(
                     POPUP_WIDTH * camera.target_zoom,
                     POPUP_HEIGHT * camera.target_zoom,
                 ));
-                ev_change_vision.send(ChangeLinesVisibility { show: false });
+                ev_change_vision.send(ChangeLinesVisibility);
             }
             _ => {}
         }
