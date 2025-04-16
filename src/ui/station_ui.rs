@@ -431,6 +431,9 @@ impl PopupMenu {
                                              mut ui_root_q: Query<
                                                 (&mut Visibility, &PopupMenu),
                                                 With<UiLayoutRoot>,
+                                            >,
+                                             mut ev_change_vision: EventWriter<
+                                                ChangeLinesVisibility,
                                             >| {
                                                 let (mut vision, position) =
                                                     ui_root_q.get_single_mut().unwrap();
@@ -441,6 +444,7 @@ impl PopupMenu {
                                                     from_menu: true,
                                                 });
                                                 *vision = Visibility::Hidden;
+                                                ev_change_vision.send(ChangeLinesVisibility);
                                             },
                                         );
                                     }
@@ -672,7 +676,7 @@ fn redraw_menu(
     text_references: Res<TextboxResource>,
     cursor_pos: Res<CursorPosition>,
     camera_q: Query<&MainCamera>,
-    metro: Res<Metro>,
+    mut metro: ResMut<Metro>,
     mut line_handlers_q: Query<(&mut Visibility, &mut LineHandlerFlag), Without<Text2d>>,
     line_handler_resource: Res<LinesResource>,
     mut redraw_linev_ev: EventWriter<RedrawPickedLineEvent>,
@@ -685,19 +689,15 @@ fn redraw_menu(
         //===================================START OF LINES VISUALISATION====================================================================
         // setup lines, where
         let mut lines_vec: Vec<MetroLine> = vec![];
-        let mut line_iter = metro.lines.iter().filter(|line| {
-            line.stations
-                .iter()
-                .filter(|station| station.position == ev.station.unwrap())
-                .next()
-                .is_some()
-        });
-        let mut line = line_iter.next();
 
-        while line.is_some() {
-            lines_vec.push(line.unwrap().clone());
-            line = line_iter.next();
+        let station = metro.find_station(ev.station.unwrap()).unwrap().clone();
+
+        for line in metro.lines.iter() {
+            if line.stations.contains(&station) {
+                lines_vec.push(line.clone());
+            }
         }
+
         redraw_linev_ev.send(RedrawPickedLineEvent {
             picked_line_prev: popup_station.picked_line,
             picked_line_now: lines_vec[0].id,

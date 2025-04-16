@@ -60,7 +60,10 @@ fn spawn_train(
         let mesh = meshes.add(Rectangle::new(36., 16.));
         let material = materials.add(ev.color);
         
-        let Some(station) = metro.lines[ev.line].stations.front() else { return };
+        let Some(station) = metro.lines[ev.line].stations.front() else { 
+            println!("line id is - {}", ev.line);
+            return 
+        };
         let position = station.position;
 
         commands.spawn((
