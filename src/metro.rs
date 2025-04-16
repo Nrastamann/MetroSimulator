@@ -21,6 +21,7 @@ pub struct Metro {
 impl Metro {
     pub fn add_line(&mut self, points: Vec<(i32, i32)>) -> &mut MetroLine {
         let id = self.lines.len();
+        println!("LINE ID IN ADD LINE - {}", id);
         let line = MetroLine::new_from_points(id, points);
         self.lines.push(line);
         &mut self.lines[id]
@@ -38,7 +39,12 @@ impl Metro {
             .next()
     }
     pub fn find_station(&mut self, station_id: (i32, i32)) -> Option<&Station> {
-        self.find_line_by_station(station_id).unwrap().stations.iter().filter(|station| station.position == station_id).next()
+        self.find_line_by_station(station_id)
+            .unwrap()
+            .stations
+            .iter()
+            .filter(|station| station.position == station_id)
+            .next()
     }
 }
 

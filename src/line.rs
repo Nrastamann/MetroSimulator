@@ -60,7 +60,7 @@ impl MetroLine {
         Self {
             name: LINE_NAMES[rand::rng().random_range(0..9)].to_string(),
             id,
-            stations: LinkedList::new(),
+            stations: stations,
             curve,
             color: Color::hsl(rng.random_range(0..=12) as f32 * 30., 0.5, 0.5),
         }

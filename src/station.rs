@@ -147,13 +147,11 @@ fn spawn_station(
     }
 }
 
-fn debug_draw_passengers(
-    q_station: Query<(&Transform, &StationButton)>,
-    mut gizmos: Gizmos
-) {
+fn debug_draw_passengers(q_station: Query<(&Transform, &StationButton)>, mut gizmos: Gizmos) {
     for (transform, station) in q_station.iter() {
         for i in 0..station.passenger_ids.len() {
-            let position = transform.translation.truncate() + 40. * Vec2::from_angle((i as f32)*(PI/6.));
+            let position =
+                transform.translation.truncate() + 40. * Vec2::from_angle((i as f32) * (PI / 6.));
             gizmos.circle_2d(Isometry2d::from_translation(position), 5., Color::BLACK);
         }
     }
@@ -190,6 +188,7 @@ fn build_new(
     if mouse.just_pressed(MouseButton::Left) {
         let Some((selected_station, _)) = q_station.iter().filter(|(_, btn)| btn.selected).next()
         else {
+            println!("a?");
             return;
         };
         // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
@@ -228,9 +227,9 @@ fn build_station(
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
 ) {
     for ev in ev_build_station.read() {
-        println!("what?");
         match ev.line_to_attach {
             usize::MAX => {
+                println!("what happens there");
                 let line = metro.add_line(vec![ev.position, ev.connection]);
                 let color = line.color;
                 ev_spawn_train.send(SpawnTrainEvent {
@@ -286,7 +285,7 @@ fn detect_left_release(
         }
 
         let position = cursor_position.as_tuple();
-
+        
         if keyboard.pressed(KeyCode::ShiftLeft) {
             blueprint.line_to_attach = usize::MAX;
         }
