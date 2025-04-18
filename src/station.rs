@@ -263,16 +263,15 @@ fn build_station(
 }
 
 fn detect_left_release(
-    cursor_position: Res<CursorPosition>,
     mouse: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut ev_build_station: EventWriter<BuildStationEvent>,
     mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
-    mut blueprint_q: Query<(&mut StationBlueprint, &mut Visibility)>,
+    mut blueprint_q: Query<(&mut StationBlueprint, &mut Visibility, &Transform)>,
 ) {
     if mouse.just_released(MouseButton::Left) {
         // строим
-        let Ok((mut blueprint, mut vision)) = blueprint_q.get_single_mut() else {
+        let Ok((mut blueprint, mut vision, position)) = blueprint_q.get_single_mut() else {
             panic!("NO BLUEPRINT");
         };
         if blueprint.menu_flag {
@@ -284,7 +283,7 @@ fn detect_left_release(
             return;
         }
 
-        let position = cursor_position.as_tuple();
+        let position = position.translation.truncate();
         
         if keyboard.pressed(KeyCode::ShiftLeft) {
             blueprint.line_to_attach = usize::MAX;
@@ -292,7 +291,7 @@ fn detect_left_release(
 
         *vision = Visibility::Hidden;
         ev_build_station.send(BuildStationEvent {
-            position: position,
+            position: (position.x.round() as i32,position.y.round() as i32),
             connection: blueprint.connection,
             direction: blueprint.direction,
             line_to_attach: blueprint.line_to_attach,
@@ -337,15 +336,14 @@ fn check_building_position(
         <= 100.0
     {
         let color: Color;
-        blueprint.can_build = true;
-        if metro.lines[blueprint.line_to_attach]
+        if metro.lines[blueprint.line_to_attach] //??????????????
             .stations
             .contains(&closest_station)
         {
             blueprint.can_build = false;
             color = Color::srgba(1.0, 0.0, 0.0, 0.5);
         } else {
-            blueprint.can_build = true;
+            blueprint.can_build = false;
             color = Color::BLACK.with_alpha(0.5);
         }
 
