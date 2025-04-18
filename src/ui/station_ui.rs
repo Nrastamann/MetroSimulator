@@ -2,13 +2,7 @@ use bevy::prelude::*;
 use bevy_lunex::*;
 //ADD REDRAW EVENT HANDLER, ADD SUPPORT TO NOT RE-CHANGE ALL TEXTs
 use crate::{
-    camera::MainCamera,
-    cursor::CursorPosition,
-    line::MetroLine,
-    metro::{Direction, Metro},
-    station::{StartBuildingEvent, Station, StationButton},
-    ui::main_menu::METRO_BLUE_COLOR,
-    GameState,
+    camera::MainCamera, cursor::CursorPosition, line::MetroLine, metro::{Direction, Metro}, station::{StartBuildingEvent, Station, StationButton}, station_blueprint::SetBlueprintColorEvent, ui::main_menu::METRO_BLUE_COLOR, GameState
 };
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
@@ -432,6 +426,10 @@ impl PopupMenu {
                                                 (&mut Visibility, &PopupMenu),
                                                 With<UiLayoutRoot>,
                                             >,
+
+                                             mut ev_set_blueprint: EventWriter<
+                                                SetBlueprintColorEvent,
+                                            >,
                                              mut ev_change_vision: EventWriter<
                                                 ChangeLinesVisibility,
                                             >| {
@@ -445,6 +443,9 @@ impl PopupMenu {
                                                 });
                                                 *vision = Visibility::Hidden;
                                                 ev_change_vision.send(ChangeLinesVisibility);
+                                                ev_set_blueprint.send(SetBlueprintColorEvent(
+                                                    Color::BLACK.with_alpha(0.5),
+                                                ));
                                             },
                                         );
                                     }
@@ -455,6 +456,10 @@ impl PopupMenu {
                                                 |_: Trigger<Pointer<Click>>,
                                                  mut new_station: EventWriter<
                                                     StartBuildingEvent,
+                                                >,
+
+                                                 mut ev_set_blueprint: EventWriter<
+                                                    SetBlueprintColorEvent,
                                                 >,
                                                  button_q: Query<&NewStationFlag>,
                                                  mut ui_root_q: Query<
@@ -498,6 +503,9 @@ impl PopupMenu {
                                                     });
                                                     *vision = Visibility::Hidden;
                                                     ev_change_vision.send(ChangeLinesVisibility);
+                                                    ev_set_blueprint.send(SetBlueprintColorEvent(
+                                                        Color::BLACK.with_alpha(0.5),
+                                                    ));
                                                 },
                                             );
                                     }
