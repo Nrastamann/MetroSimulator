@@ -232,12 +232,10 @@ fn build_station(
     for ev in ev_build_station.read() {
         match ev.line_to_attach {
             usize::MAX => {
-                println!("what happens there");
                 let line = metro.add_line(vec![ev.position, ev.connection]);
-                let color = line.color;
                 ev_spawn_train.send(SpawnTrainEvent {
                     line: line.id,
-                    color,
+                    station: ev.position,
                 });
 
                 ev_spawn_line.send(SpawnLineCurveEvent { line_id: line.id });

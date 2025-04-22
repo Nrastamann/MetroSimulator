@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::prelude::*;
 
-use crate::{metro::{Direction, Metro}, passenger::PassengerDatabase, station::{Station, StationButton}};
+use crate::{metro::{Direction, Metro}, money::Money, passenger::PassengerDatabase, station::{Station, StationButton}};
 
 #[allow(unused)]
 const TRAIN_STOP_TIME_SECS: f32 = 1.0;
@@ -20,7 +20,7 @@ impl Plugin for TrainPlugin {
 #[derive(Event)]
 pub struct SpawnTrainEvent {
     pub line: usize,
-    pub color: Color,
+    pub station: (i32, i32),
 }
 
 #[derive(Component)]
@@ -57,14 +57,15 @@ fn spawn_train(
     metro: Res<Metro>
 ) {
     for ev in ev_spawn.read() {
+        let line = &metro.lines[ev.line];
+
+        if !line.stations.contains(&Station{position: ev.station}) {
+            return;
+        }
+        let position = ev.station;
+
         let mesh = meshes.add(Rectangle::new(36., 16.));
-        let material = materials.add(ev.color);
-        
-        let Some(station) = metro.lines[ev.line].stations.front() else { 
-            println!("line id is - {}", ev.line);
-            return 
-        };
-        let position = station.position;
+        let material = materials.add(line.color);
 
         commands.spawn((
             Mesh2d(mesh),
@@ -156,6 +157,7 @@ fn move_train(
     mut q_station_button: Query<(&mut StationButton, &Station)>,
     metro: Res<Metro>,
     time: Res<Time>,
+    mut money: ResMut<Money>,
     mut passenger_database: ResMut<PassengerDatabase>,
 ) {
     for (e_train, mut train_transform, mut train) in q_train.iter_mut() {
@@ -189,7 +191,12 @@ fn move_train(
                 .next().unwrap();
 
             let mut offloaded_passengers = offload_passengers(&mut btn, &station, &mut train, &mut passenger_database);
+            
+            money.0 += offloaded_passengers.len() as u32;
+            println!("денге: {}", money.0);
+
             load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
+
 
             train.last_stop_time = time.elapsed();
 
