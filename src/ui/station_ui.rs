@@ -1,14 +1,9 @@
+//redraw lines and text into mb different events?
 use bevy::prelude::*;
 use bevy_lunex::*;
 //ADD REDRAW EVENT HANDLER, ADD SUPPORT TO NOT RE-CHANGE ALL TEXTs
 use crate::{
-    camera::MainCamera,
-    cursor::CursorPosition,
-    line::MetroLine,
-    metro::{Direction, Metro},
-    station::{StartBuildingEvent, Station, StationButton},
-    ui::main_menu::METRO_BLUE_COLOR,
-    GameState,
+    camera::MainCamera, cursor::CursorPosition, line::MetroLine, metro::{Direction, Metro}, station::{StartBuildingEvent, Station, StationButton}, station_blueprint::SetBlueprintColorEvent, ui::main_menu::METRO_BLUE_COLOR, GameState
 };
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
@@ -19,6 +14,7 @@ pub const POPUP_HEIGHT: f32 = 192.;
 
 pub const OFFSET_STATS: f32 = 20.;
 pub const OFFSET_LINES: f32 = 20.;
+pub const LINES_SIZE: f32 = 20.; //shouldn't be greater than offset
 pub const BORDER_WIDTH: f32 = 96.;
 
 const POPUP_NAME: usize = 0;
@@ -101,7 +97,6 @@ impl Plugin for StationUIPlugin {
 }
 #[derive(Event)]
 pub struct RedrawPickedLineEvent {
-    picked_line_prev: usize,
     picked_line_now: usize,
 }
 #[derive(Component)]
@@ -114,6 +109,7 @@ struct LineHandlerFlag {
 }
 #[derive(Event)]
 pub struct ChangeLinesVisibility;
+#[allow(unused)]
 #[derive(Event)]
 pub struct RedrawEvent {
     change_text: bool,
@@ -306,7 +302,6 @@ impl PopupMenu {
                             Sprite::default(),
                         ))
                         .with_children(|ui| {
-                            let line_size = 20.;
                             let mut height_off = 0.;
                             for i in 0..5 {
                                 popup_lines.entities.push(
@@ -314,7 +309,7 @@ impl PopupMenu {
                                         Name::new("Line Handler "),
                                         UiLayout::window()
                                             .anchor_left()
-                                            .rl_size(100., line_size)
+                                            .rl_size(100., LINES_SIZE)
                                             .rl_pos(0., height_off)
                                             .pack(),
                                         LineHandlerFlag { line_id: i },
@@ -350,20 +345,18 @@ impl PopupMenu {
                                             RedrawPickedLineEvent,
                                         >| {
                                             let mut root = ui_root_q.get_single_mut().unwrap();
-                                            let prev_line = root.picked_line;
                                             root.picked_line = lines_handler_q
                                                 .get_mut(clck.target)
                                                 .unwrap()
                                                 .line_id;
                                             redraw_lines_ev.send(RedrawPickedLineEvent {
-                                                picked_line_prev: prev_line,
                                                 picked_line_now: root.picked_line,
                                             });
                                         },
                                     )
                                     .id(),
                                 );
-                                height_off += line_size;
+                                height_off += OFFSET_LINES;
                             }
                         });
                         ui.spawn((
@@ -432,6 +425,10 @@ impl PopupMenu {
                                                 (&mut Visibility, &PopupMenu),
                                                 With<UiLayoutRoot>,
                                             >,
+
+                                             mut ev_set_blueprint: EventWriter<
+                                                SetBlueprintColorEvent,
+                                            >,
                                              mut ev_change_vision: EventWriter<
                                                 ChangeLinesVisibility,
                                             >| {
@@ -445,6 +442,9 @@ impl PopupMenu {
                                                 });
                                                 *vision = Visibility::Hidden;
                                                 ev_change_vision.send(ChangeLinesVisibility);
+                                                ev_set_blueprint.send(SetBlueprintColorEvent(
+                                                    Color::BLACK.with_alpha(0.5),
+                                                ));
                                             },
                                         );
                                     }
@@ -455,6 +455,10 @@ impl PopupMenu {
                                                 |_: Trigger<Pointer<Click>>,
                                                  mut new_station: EventWriter<
                                                     StartBuildingEvent,
+                                                >,
+
+                                                 mut ev_set_blueprint: EventWriter<
+                                                    SetBlueprintColorEvent,
                                                 >,
                                                  button_q: Query<&NewStationFlag>,
                                                  mut ui_root_q: Query<
@@ -498,6 +502,9 @@ impl PopupMenu {
                                                     });
                                                     *vision = Visibility::Hidden;
                                                     ev_change_vision.send(ChangeLinesVisibility);
+                                                    ev_set_blueprint.send(SetBlueprintColorEvent(
+                                                        Color::BLACK.with_alpha(0.5),
+                                                    ));
                                                 },
                                             );
                                     }
@@ -699,7 +706,6 @@ fn redraw_menu(
         }
 
         redraw_linev_ev.send(RedrawPickedLineEvent {
-            picked_line_prev: popup_station.picked_line,
             picked_line_now: lines_vec[0].id,
         });
 

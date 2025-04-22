@@ -191,22 +191,28 @@ fn build_new(
             println!("a?");
             return;
         };
+
         // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
         for line in metro.lines.iter() {
             if line.stations.contains(&selected_station) {
-                let mut direction: Direction = Direction::Forwards;
+        
 
+                let mut direction: Direction = Direction::Forwards;
+                let mut line_id = line.id;
                 // if keyboard.pressed(KeyCode::ShiftLeft) {
                 //     line = -1;
                 // }
 
                 if line.stations.front().unwrap() == selected_station {
                     direction = Direction::Backwards;
+                }else if line.stations.back().unwrap() != selected_station{
+                    println!("Line is not front& isn't back");
+                    line_id = usize::MAX;
                 }
                 ev_start_build.send(StartBuildingEvent {
                     connection: selected_station.position,
                     direction: direction,
-                    line_to_attach: line.id,
+                    line_to_attach: line_id, 
                     from_menu: false,
                 });
                 ev_set_blueprint.send(
@@ -263,16 +269,15 @@ fn build_station(
 }
 
 fn detect_left_release(
-    cursor_position: Res<CursorPosition>,
     mouse: Res<ButtonInput<MouseButton>>,
     keyboard: Res<ButtonInput<KeyCode>>,
     mut ev_build_station: EventWriter<BuildStationEvent>,
     mut ev_set_blueprint: EventWriter<SetBlueprintColorEvent>,
-    mut blueprint_q: Query<(&mut StationBlueprint, &mut Visibility)>,
+    mut blueprint_q: Query<(&mut StationBlueprint, &mut Visibility, &Transform)>,
 ) {
     if mouse.just_released(MouseButton::Left) {
         // строим
-        let Ok((mut blueprint, mut vision)) = blueprint_q.get_single_mut() else {
+        let Ok((mut blueprint, mut vision, position)) = blueprint_q.get_single_mut() else {
             panic!("NO BLUEPRINT");
         };
         if blueprint.menu_flag {
@@ -280,11 +285,12 @@ fn detect_left_release(
             return;
         }
         if !blueprint.can_build || *vision == Visibility::Hidden {
+            println!("Drops there");
             *vision = Visibility::Hidden;
             return;
         }
 
-        let position = cursor_position.as_tuple();
+        let position = position.translation.truncate();
         
         if keyboard.pressed(KeyCode::ShiftLeft) {
             blueprint.line_to_attach = usize::MAX;
@@ -292,7 +298,7 @@ fn detect_left_release(
 
         *vision = Visibility::Hidden;
         ev_build_station.send(BuildStationEvent {
-            position: position,
+            position: (position.x.round() as i32,position.y.round() as i32),
             connection: blueprint.connection,
             direction: blueprint.direction,
             line_to_attach: blueprint.line_to_attach,
