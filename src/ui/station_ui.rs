@@ -47,7 +47,7 @@ impl TextBundle {
         }
     }
 }
-trait UIStyles {
+pub trait UIStyles {
     fn anchor_center(self) -> Self;
     fn rl_size(self, x: f32, y: f32) -> Self;
     fn rl_pos(self, x: f32, y: f32) -> Self;

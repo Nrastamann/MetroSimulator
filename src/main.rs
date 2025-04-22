@@ -19,7 +19,7 @@ mod station_blueprint;
 use station_blueprint::StationBlueprintPlugin;
 
 mod ui;
-use ui::{MainMenuPlugin, StationUIPlugin};
+use ui::{MainMenuPlugin, StationUIPlugin, TutorialUIPlugin};
 
 mod line;
 
@@ -38,7 +38,7 @@ use district::DistrictPlugin;
 mod passenger;
 use passenger::PassengerPlugin;
 
-const DISTRICT_CELL_SIZE: f32 =  50.;
+const DISTRICT_CELL_SIZE: f32 = 50.;
 const MAX_DISTRICT_SIZE: usize = 24;
 
 #[derive(Debug, Clone, Copy, Default, Eq, PartialEq, Hash, States)]
@@ -46,6 +46,7 @@ pub enum GameState {
     #[default]
     MainMenu,
     InGame,
+    Settings,
 }
 
 fn main() {
@@ -61,7 +62,8 @@ fn main() {
         .add_plugins(MetroPlugin)
         .add_plugins(MetroLinePlugin)
         .add_plugins(TrainPlugin)
-        .add_plugins((MainMenuPlugin, StationUIPlugin,UiLunexDebugPlugin::<0, 0>))
+        .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, //UiLunexDebugPlugin::<0, 0>
+            ))
         .add_plugins(DistrictPlugin)
         .add_plugins(PassengerPlugin)
         .run();

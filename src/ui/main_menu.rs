@@ -1,11 +1,15 @@
 use crate::GameState;
 use bevy::prelude::*;
 use bevy_lunex::*;
+
+use super::TutorialSpawnEvent;
 pub struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<SwapStatesEvent>().add_systems(OnEnter(GameState::MainMenu), (MainMenuScene::spawn,changing_states_handler)).add_systems(OnExit(GameState::MainMenu), despawn_scene_with::<MainMenuScene>);
+        app.add_event::<SwapStatesEvent>()
+        .add_systems(Update,changing_states_handler.run_if(in_state(GameState::MainMenu)));
+        app.add_systems(OnEnter(GameState::MainMenu), MainMenuScene::spawn).add_systems(OnExit(GameState::MainMenu), despawn_scene_with::<MainMenuScene>);
     }
 }
 
@@ -21,9 +25,11 @@ pub const BUTTON_GAP: f32 = 11.0;
 pub const MAIN_MENU_BUTTONS: [&str; 4] = ["Новая игра","Обучение","Настройки", "Выйти"];
 
 pub enum MainMenuStates {
-    Tutorial = 0,
+    NewGame = 0,
+    Tutorial,
     Settings,
 }
+
 #[derive(Event)]
 pub struct SwapStatesEvent{
     move_to_where: MainMenuStates,
@@ -145,18 +151,20 @@ impl MainMenuScene {
                                     
                                     match button {
                                         "Новая игра" => {
-                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut next: ResMut<NextState<GameState>>|{
-                                                next.set(GameState::InGame);
+                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>|{
+                                                println!("wait how?");
+                                                swap_state.send( SwapStatesEvent { move_to_where: MainMenuStates::NewGame });                                                       
                                             });
                                         }
                                         "Обучение" => {
-                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut tutorial_state: EventWriter<SwapStatesEvent>|{
-                                                tutorial_state.send( SwapStatesEvent { move_to_where: MainMenuStates::Tutorial });       
+                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>|{
+                                                println!("wait a?");
+                                                swap_state.send( SwapStatesEvent { move_to_where: MainMenuStates::Tutorial });       
                                             });
                                         }
                                         "Настройки" => {
-                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut tutorial_state: EventWriter<SwapStatesEvent>|{
-                                                tutorial_state.send( SwapStatesEvent { move_to_where: MainMenuStates::Settings });       
+                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>|{
+                                                swap_state.send( SwapStatesEvent { move_to_where: MainMenuStates::Settings });       
                                             });
                                         }
                                         "Выйти" => {
@@ -164,8 +172,9 @@ impl MainMenuScene {
                                                 quit.send(AppExit::Success);
                                             });
                                         }
-                                        "Placeholder1" => {}
-                                        _ => {}
+                                        _ => {
+                                            panic!("Error option");
+                                        }
                                     }
 
                                     offset += BUTTON_GAP + BUTTON_SIZE;
@@ -177,14 +186,21 @@ impl MainMenuScene {
     }
 }
 
-fn changing_states_handler(mut swap_state_ev: EventReader<SwapStatesEvent>){
+fn changing_states_handler(mut swap_state_ev: EventReader<SwapStatesEvent>,mut spawn_tutorial_ev: EventWriter<TutorialSpawnEvent>,mut state_manager: ResMut<NextState<GameState>>){
     for ev in swap_state_ev.read(){
+        println!("What?");
         match ev.move_to_where {
+            MainMenuStates::NewGame =>{
+                state_manager.set(GameState::InGame);
+                println!("A?");
+            }
             MainMenuStates::Tutorial =>{
-                //do something
+                spawn_tutorial_ev.send(TutorialSpawnEvent);
+                state_manager.set(GameState::InGame);
+                println!("B?");
             }
             MainMenuStates::Settings =>{
-                //do something
+                state_manager.set(GameState::Settings);
             }
             _ =>{
                 panic!("NO SUCH STATE TO TRANSFER");
