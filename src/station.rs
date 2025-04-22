@@ -191,22 +191,28 @@ fn build_new(
             println!("a?");
             return;
         };
+
         // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
         for line in metro.lines.iter() {
             if line.stations.contains(&selected_station) {
-                let mut direction: Direction = Direction::Forwards;
+        
 
+                let mut direction: Direction = Direction::Forwards;
+                let mut line_id = line.id;
                 // if keyboard.pressed(KeyCode::ShiftLeft) {
                 //     line = -1;
                 // }
 
                 if line.stations.front().unwrap() == selected_station {
                     direction = Direction::Backwards;
+                }else if line.stations.back().unwrap() != selected_station{
+                    println!("Line is not front& isn't back");
+                    line_id = usize::MAX;
                 }
                 ev_start_build.send(StartBuildingEvent {
                     connection: selected_station.position,
                     direction: direction,
-                    line_to_attach: line.id,
+                    line_to_attach: line_id, 
                     from_menu: false,
                 });
                 ev_set_blueprint.send(
@@ -279,6 +285,7 @@ fn detect_left_release(
             return;
         }
         if !blueprint.can_build || *vision == Visibility::Hidden {
+            println!("Drops there");
             *vision = Visibility::Hidden;
             return;
         }
@@ -343,7 +350,7 @@ fn check_building_position(
             blueprint.can_build = false;
             color = Color::srgba(1.0, 0.0, 0.0, 0.5);
         } else {
-            blueprint.can_build = false;
+            blueprint.can_build = true;
             color = Color::BLACK.with_alpha(0.5);
         }
 

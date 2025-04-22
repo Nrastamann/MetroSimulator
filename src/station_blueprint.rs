@@ -92,7 +92,7 @@ fn start_building(
         let Ok((mut blueprint, mut vision)) = blueprint_q.get_single_mut() else{
             panic!("NO BLUEPRINT");
         };
-        
+        blueprint.can_build = true;
         blueprint.connection = ev.connection;
         blueprint.direction = ev.direction;
         blueprint.line_to_attach = ev.line_to_attach;
