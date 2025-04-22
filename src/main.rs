@@ -38,6 +38,9 @@ use district::DistrictPlugin;
 mod passenger;
 use passenger::PassengerPlugin;
 
+mod money;
+use money::MoneyPlugin;
+
 const DISTRICT_CELL_SIZE: f32 =  50.;
 const MAX_DISTRICT_SIZE: usize = 24;
 
@@ -64,5 +67,6 @@ fn main() {
         .add_plugins((MainMenuPlugin, StationUIPlugin,UiLunexDebugPlugin::<0, 0>))
         .add_plugins(DistrictPlugin)
         .add_plugins(PassengerPlugin)
+        .add_plugins(MoneyPlugin)
         .run();
 }
