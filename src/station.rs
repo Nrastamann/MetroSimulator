@@ -21,6 +21,7 @@ pub const STATION_NAMES: [&str; 10] = [
 ];
 
 const STATION_COST: u32 = 100;
+pub const STATION_MAX_PASSENGERS: u32 = 12;
 
 pub struct StationPlugin;
 
@@ -110,20 +111,6 @@ fn spawn_station(
         let mut button = StationButton::default();
         button.name = STATION_NAMES[rand::rng().random_range(0..10)].to_string();
         // println!("name - {}", button.name);
-        // for _ in 0..rand::random_range(0..5) {
-        //     let mut destination_pool = vec![];
-        //     for line in metro.lines.iter() {
-        //         for station in line.stations.iter() {
-        //             if rand::random_bool(0.5) {
-        //                 destination_pool.push(*station);
-        //             }
-        //         }
-        //     }
-        //     button.passengers.push(Passenger {
-        //         destination_pool,
-        //         ..default()
-        //     });
-        // }
 
         metro
             .stations
@@ -147,8 +134,8 @@ fn spawn_station(
 fn debug_draw_passengers(q_station: Query<(&Transform, &StationButton)>, mut gizmos: Gizmos) {
     for (transform, station) in q_station.iter() {
         for i in 0..station.passenger_ids.len() {
-            let position =
-                transform.translation.truncate() + 40. * Vec2::from_angle((i as f32) * (PI / 6.));
+            let position = transform.translation.truncate()
+                + 40. * Vec2::from_angle((i as f32) * (2. * PI / (STATION_MAX_PASSENGERS as f32)));
             gizmos.circle_2d(Isometry2d::from_translation(position), 5., Color::BLACK);
         }
     }
@@ -192,8 +179,6 @@ fn build_new(
         // начинаем строить, определяем, будет это продолжение старой ветки или создание новой
         for line in metro.lines.iter() {
             if line.stations.contains(&selected_station) {
-        
-
                 let mut direction: Direction = Direction::Forwards;
                 let mut line_id = line.id;
                 // if keyboard.pressed(KeyCode::ShiftLeft) {
@@ -202,18 +187,17 @@ fn build_new(
 
                 if line.stations.front().unwrap() == selected_station {
                     direction = Direction::Backwards;
-                }else if line.stations.back().unwrap() != selected_station{
-                    println!("Line is not front& isn't back");
+                } else if line.stations.back().unwrap() != selected_station {
+                    println!("Line is not front & isn't back");
                     line_id = usize::MAX;
                 }
                 ev_start_build.send(StartBuildingEvent {
                     connection: selected_station.position,
                     direction: direction,
-                    line_to_attach: line_id, 
+                    line_to_attach: line_id,
                     from_menu: false,
                 });
                 ev_set_blueprint.send(
-                    // todo: make color match the line
                     SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)),
                 );
             }
@@ -230,7 +214,7 @@ fn build_station(
     mut tutorial_prolong_line_ev: EventWriter<ProlongLineTutorial>,
     mut tutorial_new_line_ev: EventWriter<BuildingLineTutorial>,
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
-    mut money: ResMut<Money>
+    mut money: ResMut<Money>,
 ) {
     for ev in ev_build_station.read() {
         if money.0 < STATION_COST {
@@ -298,14 +282,14 @@ fn detect_left_release(
         }
 
         let position = position.translation.truncate();
-        
+
         if keyboard.pressed(KeyCode::ShiftLeft) {
             blueprint.line_to_attach = usize::MAX;
         }
 
         *vision = Visibility::Hidden;
         ev_build_station.send(BuildStationEvent {
-            position: (position.x.round() as i32,position.y.round() as i32),
+            position: (position.x.round() as i32, position.y.round() as i32),
             connection: blueprint.connection,
             direction: blueprint.direction,
             line_to_attach: blueprint.line_to_attach,

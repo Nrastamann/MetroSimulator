@@ -2,7 +2,10 @@
 
 use bevy::prelude::*;
 
-use crate::{cursor::CursorPosition, metro::Direction, station::StartBuildingEvent, GameState, DISTRICT_CELL_SIZE};
+use crate::{
+    cursor::CursorPosition, metro::Direction, station::StartBuildingEvent, GameState,
+    DISTRICT_CELL_SIZE,
+};
 
 #[derive(Component)]
 pub struct StationBlueprint {
@@ -22,7 +25,8 @@ impl Plugin for StationBlueprintPlugin {
         app.add_systems(Startup, init_blueprint);
         app.add_systems(
             Update,
-            (stick_to_mouse, toggle_station_blueprint, start_building).run_if(in_state(GameState::InGame)),
+            (stick_to_mouse, toggle_station_blueprint, start_building)
+                .run_if(in_state(GameState::InGame)),
         );
     }
 }
@@ -54,16 +58,15 @@ fn stick_to_mouse(
     keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     for mut blueprint_transform in q_blueprint.iter_mut() {
-        if keyboard.pressed(KeyCode::ControlLeft){
-            blueprint_transform.translation = 
-            Vec3::new(
+        if keyboard.pressed(KeyCode::ControlLeft) {
+            blueprint_transform.translation = Vec3::new(
                 (cursor_position.0.x / DISTRICT_CELL_SIZE).round() * DISTRICT_CELL_SIZE,
                 (cursor_position.0.y / DISTRICT_CELL_SIZE).round() * DISTRICT_CELL_SIZE,
-                1.0
+                1.0,
             );
             return;
         }
-        blueprint_transform.translation = Vec3::new(cursor_position.0.x, cursor_position.0.y,0.0);
+        blueprint_transform.translation = Vec3::new(cursor_position.0.x, cursor_position.0.y, 0.0);
     }
 }
 
@@ -89,7 +92,7 @@ fn start_building(
     mut blueprint_q: Query<(&mut StationBlueprint, &mut Visibility)>,
 ) {
     for ev in ev_set_blueprint.read() {
-        let Ok((mut blueprint, mut vision)) = blueprint_q.get_single_mut() else{
+        let Ok((mut blueprint, mut vision)) = blueprint_q.get_single_mut() else {
             panic!("NO BLUEPRINT");
         };
         blueprint.can_build = true;
