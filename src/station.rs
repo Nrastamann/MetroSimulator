@@ -4,12 +4,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    cursor::CursorPosition,
-    line::{SpawnLineCurveEvent, UpdateLineRendererEvent},
-    metro::{Direction, Metro},
-    station_blueprint::{SetBlueprintColorEvent, StationBlueprint},
-    train::SpawnTrainEvent,
-    GameState,
+    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, money::Money, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, GameState
 };
 
 pub const STATION_NAMES: [&str; 10] = [
@@ -17,13 +12,15 @@ pub const STATION_NAMES: [&str; 10] = [
     "Обводный канал",
     "Озерки",
     "Парнас",
-    "Динамо",
+    "Зенит",
     "Автово",
     "Сенная площадь",
     "Купчино",
     "Дыбенко",
     "Звездная",
 ];
+
+const STATION_COST: u32 = 100;
 
 pub struct StationPlugin;
 
@@ -231,8 +228,15 @@ fn build_station(
     mut ev_update_line_renderer: EventWriter<UpdateLineRendererEvent>,
     mut ev_spawn_line: EventWriter<SpawnLineCurveEvent>,
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
+    mut money: ResMut<Money>
 ) {
     for ev in ev_build_station.read() {
+        if money.0 < STATION_COST {
+            continue;
+        }
+
+        money.0 -= STATION_COST;
+
         match ev.line_to_attach {
             usize::MAX => {
                 let line = metro.add_line(vec![ev.position, ev.connection]);
