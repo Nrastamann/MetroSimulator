@@ -1,3 +1,5 @@
+//Стоит ли запретить тянуть с середины линии, или если игрок тянет не конечную/начальную станцию - пусть сразу создается линия
+
 use bevy::prelude::*;
 
 use crate::{cursor::CursorPosition, metro::Direction, station::StartBuildingEvent, GameState, DISTRICT_CELL_SIZE};
@@ -49,14 +51,19 @@ fn init_blueprint(
 fn stick_to_mouse(
     mut q_blueprint: Query<&mut Transform, With<StationBlueprint>>,
     cursor_position: Res<CursorPosition>,
+    keyboard: Res<ButtonInput<KeyCode>>,
 ) {
     for mut blueprint_transform in q_blueprint.iter_mut() {
-        blueprint_transform.translation = 
+        if keyboard.pressed(KeyCode::ControlLeft){
+            blueprint_transform.translation = 
             Vec3::new(
                 (cursor_position.0.x / DISTRICT_CELL_SIZE).round() * DISTRICT_CELL_SIZE,
                 (cursor_position.0.y / DISTRICT_CELL_SIZE).round() * DISTRICT_CELL_SIZE,
                 1.0
             );
+            return;
+        }
+        blueprint_transform.translation = Vec3::new(cursor_position.0.x, cursor_position.0.y,0.0);
     }
 }
 
@@ -85,7 +92,7 @@ fn start_building(
         let Ok((mut blueprint, mut vision)) = blueprint_q.get_single_mut() else{
             panic!("NO BLUEPRINT");
         };
-        
+        blueprint.can_build = true;
         blueprint.connection = ev.connection;
         blueprint.direction = ev.direction;
         blueprint.line_to_attach = ev.line_to_attach;
