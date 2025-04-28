@@ -62,7 +62,7 @@ fn main() {
         .add_plugins(MetroPlugin)
         .add_plugins(MetroLinePlugin)
         .add_plugins(TrainPlugin)
-        .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, //UiLunexDebugPlugin::<0, 0>
+        .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin,
             ))
         .add_plugins(DistrictPlugin)
         .add_plugins(PassengerPlugin)
