@@ -6,3 +6,6 @@ pub use station_ui::*;
 
 mod tutorial_ui;
 pub use tutorial_ui::*;
+
+mod money_ui;
+pub use money_ui::*;

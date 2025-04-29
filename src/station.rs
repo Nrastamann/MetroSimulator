@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, money::Money, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, ui::{BuildingLineTutorial, ProlongLineTutorial}, GameState
+    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, money::Money, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, ui::{BuildingLineTutorial, MoneyRedrawEvent, ProlongLineTutorial}, GameState
 };
 
 pub const STATION_NAMES: [&str; 10] = [
@@ -102,6 +102,7 @@ fn spawn_station(
 
         let inner_circle = commands
             .spawn((
+                StateScoped(GameState::InGame),
                 Mesh2d(meshes.add(Circle::new(20.))),
                 MeshMaterial2d(materials.add(Color::WHITE)),
                 Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
@@ -117,6 +118,7 @@ fn spawn_station(
             .add(ev.connection, ev.position, station.clone());
         commands
             .spawn((
+                StateScoped(GameState::InGame),
                 Mesh2d(mesh),
                 MeshMaterial2d(material),
                 Transform::from_translation(Vec3::new(
@@ -215,6 +217,7 @@ fn build_station(
     mut tutorial_new_line_ev: EventWriter<BuildingLineTutorial>,
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
     mut money: ResMut<Money>,
+    mut change_money_ui: EventWriter<MoneyRedrawEvent>
 ) {
     for ev in ev_build_station.read() {
         if money.0 < STATION_COST {
@@ -222,6 +225,7 @@ fn build_station(
         }
 
         money.0 -= STATION_COST;
+        change_money_ui.send(MoneyRedrawEvent);
 
         match ev.line_to_attach {
             usize::MAX => {

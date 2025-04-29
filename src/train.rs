@@ -3,10 +3,7 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use crate::{
-    metro::{Direction, Metro},
-    money::Money,
-    passenger::PassengerDatabase,
-    station::{Station, StationButton, STATION_MAX_PASSENGERS},
+    metro::{Direction, Metro}, money::Money, passenger::PassengerDatabase, station::{Station, StationButton, STATION_MAX_PASSENGERS}, ui::MoneyRedrawEvent, GameState
 };
 
 const TRAIN_STOP_TIME_SECS: f32 = 1.0;
@@ -70,6 +67,7 @@ fn spawn_train(
         if !line.stations.contains(&Station {
             position: ev.station,
         }) {
+            println!("NO TRAIN FOR YOU");
             return;
         }
         let position = ev.station;
@@ -78,6 +76,7 @@ fn spawn_train(
         let material = materials.add(line.color);
 
         commands.spawn((
+            StateScoped(GameState::InGame),
             Mesh2d(mesh),
             MeshMaterial2d(material),
             Transform::from_translation(Vec3::new(position.0 as f32, position.1 as f32, -1.0)),
@@ -168,6 +167,7 @@ fn move_train(
     time: Res<Time>,
     mut money: ResMut<Money>,
     mut passenger_database: ResMut<PassengerDatabase>,
+    mut redraw_money: EventWriter<MoneyRedrawEvent>,
 ) {
     for (e_train, mut train_transform, mut train) in q_train.iter_mut() {
         let line = &metro.lines[train.line];
@@ -207,6 +207,7 @@ fn move_train(
                 offload_passengers(&mut btn, &station, &mut train, &mut passenger_database);
 
             money.0 += offloaded_passengers.len() as u32;
+            redraw_money.send(MoneyRedrawEvent);
             println!("денге: {}", money.0);
 
             load_passengers(&mut btn, &mut train, &mut offloaded_passengers);

@@ -3,7 +3,7 @@ use std::collections::LinkedList;
 use bevy::prelude::*;
 use rand::prelude::*;
 
-use crate::{metro::Metro, station::Station};
+use crate::{metro::Metro, station::Station, GameState};
 
 pub struct MetroLinePlugin;
 
@@ -91,6 +91,7 @@ fn spawn_line_curve(
             colors.push(line.color.into());
         }
         commands.spawn((
+            StateScoped(GameState::InGame),
             bevy_2d_line::Line {
                 points,
                 colors,

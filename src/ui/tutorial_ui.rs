@@ -7,26 +7,40 @@ use bevy::{
 };
 use bevy_lunex::*;
 
-use crate::GameState;
+use crate::{
+    camera::MainCamera, district::DistrictMap, metro::Metro, money::Money,
+    passenger::PassengerDatabase, GameState,
+};
 
-use super::{RedrawEvent, UIStyles, METRO_LIGHT_BLUE_COLOR, UI_FONT};
+use super::{
+    LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_LIGHT_BLUE_COLOR, UI_FONT,
+};
 
 pub struct TutorialUIPlugin;
 
 impl Plugin for TutorialUIPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Progress>();
+        app.enable_state_scoped_entities::<GameState>();
         app.add_event::<BuyTrainTutorial>()
             .add_event::<TutorialSpawnEvent>()
-            .add_event::<SpawnQuitEvent>()
             .add_event::<RedrawTextEvent>()
             .add_event::<BuildingLineTutorial>()
             .add_event::<ProlongLineTutorial>();
+        app.add_systems(Update, (track_progress, rewrite_text_of_hint))
+            .add_systems(OnEnter(GameState::InGame), Tutorial::spawn_tutorial);
+
         app.add_systems(
-            Update,
-            (spawn_quit_button, track_progress, rewrite_text_of_hint),
-        )
-        .add_systems(OnEnter(GameState::InGame), Tutorial::spawn_tutorial);
+            OnExit(GameState::InGame),
+            (
+                clear_resource::<Metro>,
+                clear_resource::<PassengerDatabase>,
+                clear_resource::<DistrictMap>,
+                clear_resource::<Money>,
+                clear_resource::<TextboxResource>,
+                clear_resource::<LinesResource>,
+            ),
+        );
     }
 }
 
@@ -41,9 +55,6 @@ pub enum TasksInTutorial {
     BuyTrain,
     EndOfTutorial,
 }
-
-#[derive(Event)]
-pub struct SpawnQuitEvent;
 
 #[derive(Event)]
 pub struct BuyTrainTutorial;
@@ -108,7 +119,12 @@ impl Tutorial {
     ) {
         for _ in spawn_tutorial_ev.read() {
             commands
-                .spawn((UiLayoutRoot::new_2d(), UiFetchFromCamera::<0>, Tutorial))
+                .spawn((
+                    UiLayoutRoot::new_2d(),
+                    StateScoped(GameState::InGame),
+                    UiFetchFromCamera::<0>,
+                    Tutorial,
+                ))
                 .with_children(|ui| {
                     ui.spawn(UiLayoutTypeWindow::new().full().pack())
                         .with_children(|ui| {
@@ -213,7 +229,7 @@ impl Tutorial {
                                                         .rl_pos(0., 17.5)
                                                         .pack(),
                                                     UiColor::from(Color::BLACK.with_alpha(0.95)),
-                                                    UiTextSize::from(Rh(70.)),
+                                                    UiTextSize::from(Rh(67.5)),
                                                     Text2d::new(text.to_string()),
                                                     TextFont {
                                                         font: asset_server.load(UI_FONT),
@@ -238,18 +254,23 @@ fn track_progress(
     keyboard: Res<ButtonInput<KeyCode>>,
     time: ResMut<Time>,
     mut progress: ResMut<Progress>,
+    mut camera_q: Query<&mut Transform, With<MainCamera>>,
     redraw_menu: EventReader<RedrawEvent>,
     prolong_line_ev: EventReader<ProlongLineTutorial>,
     build_line_tutorial_ev: EventReader<BuildingLineTutorial>,
     mut redraw_hint: EventWriter<RedrawTextEvent>,
     buy_train_ev: EventReader<BuyTrainTutorial>,
-    mut spawn_quit: EventWriter<SpawnQuitEvent>,
     tutorial_ui_root_q: Query<Entity, (With<UiLayoutRoot>, With<Tutorial>)>,
+    mut hint: Query<&mut Text2d, With<HintToRedraw>>,
     mut commands: Commands,
+    mut state_manager: ResMut<NextState<GameState>>,
 ) {
     //add some text as easter egg, like why are you taking so long to complete the task
     match progress.current_task {
         TasksInTutorial::MoveCamera => {
+            if hint.iter().len() <= 0 {
+                return;
+            }
             if keyboard.just_pressed(KeyCode::KeyW)
                 || keyboard.just_pressed(KeyCode::KeyA)
                 || keyboard.just_pressed(KeyCode::KeyS)
@@ -291,72 +312,16 @@ fn track_progress(
         }
         TasksInTutorial::EndOfTutorial => {
             if keyboard.just_pressed(KeyCode::KeyQ) {
-                spawn_quit.send(SpawnQuitEvent);
                 commands
                     .entity(tutorial_ui_root_q.get_single().unwrap())
                     .despawn_recursive();
             }
+            if keyboard.just_pressed(KeyCode::KeyE) {
+                state_manager.set(GameState::MainMenu);
+                camera_q.get_single_mut().unwrap().translation = Vec3::new(0., 0., 0.);
+                //add delete on smth.
+            }
         }
-    }
-}
-
-fn spawn_quit_button(
-    mut commands: Commands,
-    mut spawn_quit_ev: EventReader<SpawnQuitEvent>,
-    asset_server: Res<AssetServer>,
-) {
-    for _ in spawn_quit_ev.read() {
-        commands
-            .spawn((UiLayoutRoot::new_2d(), UiFetchFromCamera::<0>, Tutorial))
-            .with_children(|ui| {
-                ui.spawn((
-                    UiLayout::window()
-                        .anchor_left()
-                        .rl_size(20., 5.)
-                        .rl_pos(87.55, 0.)
-                        .pack(),
-                    Tutorial,
-                ))
-                .with_children(|ui| {
-                    ui.spawn((
-                        UiLayout::window().full().pack(),
-                        Sprite::default(),
-                        UiHover::new().forward_speed(20.).backward_speed(4.),
-                        UiColor::new(vec![
-                            (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
-                            (UiHover::id(), Color::WHITE),
-                        ]),
-                    ))
-                    .with_children(|ui| {
-                        ui.spawn((
-                            UiLayout::window().anchor_center().pack(),
-                            UiColor::new(vec![
-                                (UiBase::id(), Color::WHITE),
-                                (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
-                            ]),
-                            UiTextSize::from(Rh(80.)),
-                            Text2d::new("Закончить обучение"),
-                            TextFont {
-                                font: asset_server.load(UI_FONT),
-                                font_size: 96.,
-                                ..default()
-                            },
-                            PickingBehavior::IGNORE,
-                        ));
-                    });
-                });
-            })
-            .observe(hover_set::<Pointer<Over>, true>)
-            .observe(hover_set::<Pointer<Out>, false>)
-            .observe(
-                |_: Trigger<Pointer<Click>>,
-                 mut commands: Commands,
-                 mut state_manager: ResMut<NextState<GameState>>,
-                 popup_q: Query<Entity, (With<UiLayoutRoot>, With<Tutorial>)>| {
-                    state_manager.set(GameState::MainMenu);
-                    commands.entity(popup_q.get_single().unwrap()).despawn_recursive();
-                 },
-            );
     }
 }
 
@@ -370,4 +335,8 @@ fn rewrite_text_of_hint(
 
         text.0 = TUTORIAL_HINTS[tutorial_progress.current_task as usize].to_string();
     }
+}
+
+fn clear_resource<T: Resource + Default>(mut commands: Commands, resource: ResMut<T>) {
+    commands.insert_resource(T::default());
 }

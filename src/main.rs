@@ -19,7 +19,7 @@ mod station_blueprint;
 use station_blueprint::StationBlueprintPlugin;
 
 mod ui;
-use ui::{MainMenuPlugin, StationUIPlugin, TutorialUIPlugin};
+use ui::{MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin};
 
 mod line;
 
@@ -66,7 +66,7 @@ fn main() {
         .add_plugins(MetroPlugin)
         .add_plugins(MetroLinePlugin)
         .add_plugins(TrainPlugin)
-        .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin,
+        .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin
             ))
         .add_plugins(DistrictPlugin)
         .add_plugins(PassengerPlugin)

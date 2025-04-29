@@ -127,6 +127,7 @@ impl PopupMenu {
         let camera = camera_q.get_single().unwrap();
         commands
             .spawn((
+                StateScoped(GameState::InGame),
                 Visibility::Hidden,
                 UiLayoutRoot::new_2d(),
                 Dimension::from((
@@ -405,6 +406,7 @@ impl PopupMenu {
                                     line: popup.picked_line,
                                     station: popup.station,
                                 });
+                                println!("BOUGHT A TRAIN");
                                 buy_train_t.send(BuyTrainTutorial);
                             });
 
@@ -617,7 +619,16 @@ fn redraw_lines_menu(
             .filter(|(_, line_numb, _)| line_numb.line_id == ev.picked_line_now)
             .next()
             .unwrap();
-        *color_new = UiColor::from(Color::WHITE);
+        let mut bg_color: Hsla;
+        bg_color = metro.lines[menu.picked_line].color.into();
+
+        if bg_color.hue() < 180. {
+            bg_color.hue += 180.;
+        } else {
+            bg_color.hue -= 180.;
+        }
+
+        *color_new = UiColor::from(bg_color);
 
         *text_query
             .get_mut(*child_now.iter().next().unwrap())

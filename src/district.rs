@@ -225,6 +225,7 @@ fn draw_district_cells (
             let material = materials.add(district.district_type.color().with_alpha(0.5));
 
             commands.spawn((
+                StateScoped(GameState::InGame),
                 Mesh2d(mesh),
                 MeshMaterial2d(material),
                 DistrictCell { position: *cell },
