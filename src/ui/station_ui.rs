@@ -9,10 +9,11 @@ use crate::{
     metro::{Direction, Metro},
     station::{StartBuildingEvent, Station, StationButton},
     station_blueprint::SetBlueprintColorEvent,
+    train::SpawnTrainEvent,
     GameState,
 };
 
-use super::METRO_LIGHT_BLUE_COLOR;
+use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR};
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
 pub const RMB_BUTTONS: [&str; 2] = ["Новая станция", "Новая линия"];
@@ -357,49 +358,55 @@ impl PopupMenu {
                             UiLayout::window().y(Rl(70.)).size(Rl((100., 30.))).pack(),
                         ))
                         .with_children(|ui| {
-                            let mut buy_train_button = ui
-                                .spawn((
-                                    Name::new("Buy Train"),
-                                    UiLayout::window().rl_size(100., 35.).rl_pos(0., 0.).pack(),
+                            ui.spawn((
+                                Name::new("Buy Train"),
+                                UiLayout::window().rl_size(100., 35.).rl_pos(0., 0.).pack(),
+                            ))
+                            .with_children(|ui| {
+                                ui.spawn((
+                                    Name::new("New train handler"),
+                                    UiLayout::window()
+                                        .rl_pos(0., 0.)
+                                        .size(Rl((100., 100.)))
+                                        .pack(),
+                                    Sprite::default(),
+                                    UiHover::new().forward_speed(20.0).backward_speed(4.0),
+                                    //                                    UiColor::from(Color::BLACK),
+                                    UiColor::new(vec![
+                                        (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
+                                        (UiHover::id(), Color::WHITE),
+                                    ]),
                                 ))
                                 .with_children(|ui| {
                                     ui.spawn((
-                                        Name::new("New train handler"),
-                                        UiLayout::window()
-                                            .rl_pos(0., 0.)
-                                            .size(Rl((100., 100.)))
-                                            .pack(),
-                                        Sprite::default(),
+                                        Name::new("Buy Train"),
+                                        UiLayout::window().anchor_center().pack(),
                                         UiHover::new().forward_speed(20.0).backward_speed(4.0),
-                                        //                                    UiColor::from(Color::BLACK),
                                         UiColor::new(vec![
-                                            (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
-                                            (UiHover::id(), Color::WHITE),
+                                            (UiBase::id(), Color::WHITE),
+                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
                                         ]),
-                                    ))
-                                    .with_children(|ui| {
-                                        ui.spawn((
-                                            Name::new("Buy Train"),
-                                            UiLayout::window().anchor_center().pack(),
-                                            UiHover::new().forward_speed(20.0).backward_speed(4.0),
-                                            UiColor::new(vec![
-                                                (UiBase::id(), Color::WHITE),
-                                                (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
-                                            ]),
-                                            UiTextSize::from(Rh(100.)),
-                                            Text2d::new("Купить автобус"),
-                                            TextFont {
-                                                font: asset_server.load(UI_FONT),
-                                                font_size: 96.,
-                                                ..default()
-                                            },
-                                            PickingBehavior::IGNORE,
-                                        ));
-                                    });
-                                })
-                                .observe(hover_set::<Pointer<Over>, true>)
-                                .observe(hover_set::<Pointer<Out>, false>);
-                            buy_train_button.observe(|_: Trigger<Pointer<Click>>| {});
+                                        UiTextSize::from(Rh(100.)),
+                                        Text2d::new("Купить поезд"),
+                                        TextFont {
+                                            font: asset_server.load(UI_FONT),
+                                            font_size: 96.,
+                                            ..default()
+                                        },
+                                        PickingBehavior::IGNORE,
+                                    ));
+                                });
+                            })
+                            .observe(hover_set::<Pointer<Over>, true>)
+                            .observe(hover_set::<Pointer<Out>, false>)
+                            .observe(|_: Trigger<Pointer<Click>>,mut buy_train: EventWriter<SpawnTrainEvent>, mut buy_train_t: EventWriter<BuyTrainTutorial>,popup_q: Query<&PopupMenu, With<UiLayoutRoot>>| {
+                                let popup = popup_q.get_single().unwrap();
+                                buy_train.send(SpawnTrainEvent{
+                                    line: popup.picked_line,
+                                    station: popup.station,
+                                });
+                                buy_train_t.send(BuyTrainTutorial);
+                            });
 
                             let mut offset_buttons = 0.;
                             for i in RMB_BUTTONS {

@@ -3,24 +3,30 @@ use std::default;
 use bevy::{
     input::mouse::{MouseButtonInput, MouseWheel},
     prelude::*,
+    state::commands,
 };
 use bevy_lunex::*;
 
 use crate::GameState;
 
-use super::{RedrawEvent, UIStyles, UI_FONT};
+use super::{RedrawEvent, UIStyles, METRO_LIGHT_BLUE_COLOR, UI_FONT};
 
 pub struct TutorialUIPlugin;
 
 impl Plugin for TutorialUIPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<Progress>();
-        app.add_event::<TutorialSpawnEvent>()
+        app.add_event::<BuyTrainTutorial>()
+            .add_event::<TutorialSpawnEvent>()
+            .add_event::<SpawnQuitEvent>()
             .add_event::<RedrawTextEvent>()
             .add_event::<BuildingLineTutorial>()
             .add_event::<ProlongLineTutorial>();
-        app.add_systems(Update, (track_progress,rewrite_text_of_hint))
-            .add_systems(OnEnter(GameState::InGame), Tutorial::spawn_tutorial);
+        app.add_systems(
+            Update,
+            (spawn_quit_button, track_progress, rewrite_text_of_hint),
+        )
+        .add_systems(OnEnter(GameState::InGame), Tutorial::spawn_tutorial);
     }
 }
 
@@ -33,7 +39,14 @@ pub enum TasksInTutorial {
     ProlongTheLine,
     BuildNewLine,
     BuyTrain,
+    EndOfTutorial,
 }
+
+#[derive(Event)]
+pub struct SpawnQuitEvent;
+
+#[derive(Event)]
+pub struct BuyTrainTutorial;
 
 #[derive(Event)]
 pub struct BuildingLineTutorial;
@@ -65,13 +78,14 @@ const TUTORIAL_TASKS: [&str; 6] = [
 //     "Поезд на выбранную ветку можно купить также в меню станции.",
 // ];
 
-const TUTORIAL_HINTS: [&str; 6] = [
+const TUTORIAL_HINTS: [&str; 7] = [
     "С помощью WASD\nты можешь двигать карту.",
     "Используя колесо мышки\nты можешь приближать\nи отдалять карту.",
     "Чтобы открыть меню станции\nнажми ПКМ на станцию.",
     "Чтобы продлить ветку,\nнужно выбрать одну из\nсуществующих веток и нажать\n'новая станция'.",
     "Чтобы построить новую ветку,\nнужно открыть меню станции\nи нажать 'новая линия'.",
     "Поезд на выбранную ветку\nможно купить также в\nменю станции.",
+    "Обучение на этом заканчивается\nВы можете продолжить играть в нем\n или же выйти в меню с помощью кнопки справа сверху.\nЧтобы закрыть окно подсказок - нажмите q."
 ];
 #[derive(Component)]
 struct HintToRedraw;
@@ -120,7 +134,7 @@ impl Tutorial {
                                         font_size: 96.,
                                         ..default()
                                     },
-                                    TextLayout{
+                                    TextLayout {
                                         justify: JustifyText::Center,
                                         linebreak: LineBreak::WordBoundary,
                                     },
@@ -228,6 +242,10 @@ fn track_progress(
     prolong_line_ev: EventReader<ProlongLineTutorial>,
     build_line_tutorial_ev: EventReader<BuildingLineTutorial>,
     mut redraw_hint: EventWriter<RedrawTextEvent>,
+    buy_train_ev: EventReader<BuyTrainTutorial>,
+    mut spawn_quit: EventWriter<SpawnQuitEvent>,
+    tutorial_ui_root_q: Query<Entity, (With<UiLayoutRoot>, With<Tutorial>)>,
+    mut commands: Commands,
 ) {
     //add some text as easter egg, like why are you taking so long to complete the task
     match progress.current_task {
@@ -265,7 +283,80 @@ fn track_progress(
                 redraw_hint.send(RedrawTextEvent);
             }
         }
-        _ => {}
+        TasksInTutorial::BuyTrain => {
+            if !buy_train_ev.is_empty() {
+                progress.current_task = TasksInTutorial::EndOfTutorial;
+                redraw_hint.send(RedrawTextEvent);
+            }
+        }
+        TasksInTutorial::EndOfTutorial => {
+            if keyboard.just_pressed(KeyCode::KeyQ) {
+                spawn_quit.send(SpawnQuitEvent);
+                commands
+                    .entity(tutorial_ui_root_q.get_single().unwrap())
+                    .despawn_recursive();
+            }
+        }
+    }
+}
+
+fn spawn_quit_button(
+    mut commands: Commands,
+    mut spawn_quit_ev: EventReader<SpawnQuitEvent>,
+    asset_server: Res<AssetServer>,
+) {
+    for _ in spawn_quit_ev.read() {
+        commands
+            .spawn((UiLayoutRoot::new_2d(), UiFetchFromCamera::<0>, Tutorial))
+            .with_children(|ui| {
+                ui.spawn((
+                    UiLayout::window()
+                        .anchor_left()
+                        .rl_size(20., 5.)
+                        .rl_pos(87.55, 0.)
+                        .pack(),
+                    Tutorial,
+                ))
+                .with_children(|ui| {
+                    ui.spawn((
+                        UiLayout::window().full().pack(),
+                        Sprite::default(),
+                        UiHover::new().forward_speed(20.).backward_speed(4.),
+                        UiColor::new(vec![
+                            (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
+                            (UiHover::id(), Color::WHITE),
+                        ]),
+                    ))
+                    .with_children(|ui| {
+                        ui.spawn((
+                            UiLayout::window().anchor_center().pack(),
+                            UiColor::new(vec![
+                                (UiBase::id(), Color::WHITE),
+                                (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
+                            ]),
+                            UiTextSize::from(Rh(80.)),
+                            Text2d::new("Закончить обучение"),
+                            TextFont {
+                                font: asset_server.load(UI_FONT),
+                                font_size: 96.,
+                                ..default()
+                            },
+                            PickingBehavior::IGNORE,
+                        ));
+                    });
+                });
+            })
+            .observe(hover_set::<Pointer<Over>, true>)
+            .observe(hover_set::<Pointer<Out>, false>)
+            .observe(
+                |_: Trigger<Pointer<Click>>,
+                 mut commands: Commands,
+                 mut state_manager: ResMut<NextState<GameState>>,
+                 popup_q: Query<Entity, (With<UiLayoutRoot>, With<Tutorial>)>| {
+                    state_manager.set(GameState::MainMenu);
+                    commands.entity(popup_q.get_single().unwrap()).despawn_recursive();
+                 },
+            );
     }
 }
 

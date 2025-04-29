@@ -4,7 +4,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, ui::{BuildingLineTutorial, ProlongLineTutorial}, GameState
+    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, money::Money, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, ui::{BuildingLineTutorial, ProlongLineTutorial}, GameState
 };
 
 pub const STATION_NAMES: [&str; 10] = [
