@@ -2,7 +2,7 @@ use bevy::{input::mouse::MouseWheel, prelude::*};
 use bevy_lunex::{Dimension, UiLayoutRoot, UiSourceCamera};
 
 use crate::{
-    ui::{ChangeLinesVisibility, PopupMenu, POPUP_HEIGHT, POPUP_WIDTH},
+    ui::{ChangeLinesVisibility, PopupMenu, Tutorial, POPUP_HEIGHT, POPUP_WIDTH},
     GameState,
 };
 
@@ -43,7 +43,8 @@ fn spawn_camera(mut commands: Commands) {
 }
 
 fn move_camera(
-    mut q_camera: Query<(&mut Transform, &MainCamera)>,
+    mut q_camera: Query<(&mut Transform, &MainCamera), Without<UiLayoutRoot>>,
+    mut q_tutorial: Query<&mut Transform, (With<UiLayoutRoot>, With<Tutorial>, Without<Camera>)>,
     keyboard: Res<ButtonInput<KeyCode>>,
     time: Res<Time>,
 ) {
@@ -67,6 +68,13 @@ fn move_camera(
     }
 
     camera_transform.translation +=
+        direction.extend(0.0) * camera.move_speed * camera.target_zoom * time.delta_secs();
+
+    let Ok(mut tutorial_root_pos) = q_tutorial.get_single_mut() else {
+        return;
+    };
+
+    tutorial_root_pos.translation +=
         direction.extend(0.0) * camera.move_speed * camera.target_zoom * time.delta_secs();
 }
 

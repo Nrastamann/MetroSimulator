@@ -3,8 +3,17 @@ use bevy::prelude::*;
 use bevy_lunex::*;
 //ADD REDRAW EVENT HANDLER, ADD SUPPORT TO NOT RE-CHANGE ALL TEXTs
 use crate::{
-    camera::MainCamera, cursor::CursorPosition, line::MetroLine, metro::{Direction, Metro}, station::{StartBuildingEvent, Station, StationButton}, station_blueprint::SetBlueprintColorEvent, ui::main_menu::METRO_BLUE_COLOR, GameState
+    camera::MainCamera,
+    cursor::CursorPosition,
+    line::MetroLine,
+    metro::{Direction, Metro},
+    station::{StartBuildingEvent, Station, StationButton},
+    station_blueprint::SetBlueprintColorEvent,
+    train::SpawnTrainEvent,
+    GameState,
 };
+
+use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR};
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
 pub const RMB_BUTTONS: [&str; 2] = ["Новая станция", "Новая линия"];
@@ -24,30 +33,7 @@ const POPUP_STATION_CAPACITY: usize = 3;
 const POPUP_LINE_HANDLER: usize = 4;
 const POPUP_STATION_BUTTON: usize = 9;
 
-#[derive(Bundle)]
-struct TextBundle {
-    color: UiColor,
-    text_size: UiTextSize,
-    text: Text2d,
-    text_font: TextFont,
-    picking_beh: PickingBehavior,
-}
-impl TextBundle {
-    fn default_text(color: Color, font: Handle<Font>, size: f32, text: String) -> Self {
-        Self {
-            color: UiColor::from(color),
-            text_size: UiTextSize::from(Rh(size)),
-            text: Text2d::new(text),
-            text_font: TextFont {
-                font: font,
-                font_size: 96.,
-                ..default()
-            },
-            picking_beh: PickingBehavior::IGNORE,
-        }
-    }
-}
-trait UIStyles {
+pub trait UIStyles {
     fn anchor_center(self) -> Self;
     fn rl_size(self, x: f32, y: f32) -> Self;
     fn rl_pos(self, x: f32, y: f32) -> Self;
@@ -169,14 +155,14 @@ impl PopupMenu {
                         UiLayout::window()
                             .rl_size(
                                 100. - BORDER_WIDTH / POPUP_WIDTH * 2.,
-                                30. - BORDER_WIDTH / POPUP_HEIGHT,
+                                20. - BORDER_WIDTH / POPUP_HEIGHT,
                             )
                             .anchor_left() //could break smth
                             .y(Rl(BORDER_WIDTH / POPUP_HEIGHT))
                             .x(Rl(BORDER_WIDTH / POPUP_WIDTH))
                             .pack(),
                         Sprite::default(),
-                        UiColor::from(METRO_BLUE_COLOR),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
                     ))
                     .with_children(|ui| {
                         popup_textboxes.entities.push(
@@ -187,12 +173,14 @@ impl PopupMenu {
                                     //37.5
                                     .anchor_center()
                                     .pack(),
-                                TextBundle::default_text(
-                                    Color::WHITE,
-                                    asset_server.load(UI_FONT),
-                                    100.,
-                                    "sample_text".to_string(),
-                                ),
+                                UiColor::from(Color::WHITE.with_alpha(0.8)),
+                                UiTextSize::from(Rh(100.)),
+                                Text2d::new("sample_txt"),
+                                TextFont {
+                                    font: asset_server.load(UI_FONT),
+                                    font_size: 96.,
+                                    ..default()
+                                },
                             ))
                             .id(),
                         );
@@ -204,15 +192,15 @@ impl PopupMenu {
                             .anchor_left()
                             .pos((
                                 Rl(BORDER_WIDTH / POPUP_WIDTH),
-                                Rl(30.) + Rl(BORDER_WIDTH / POPUP_HEIGHT),
+                                Rl(20.) + Rl(BORDER_WIDTH / POPUP_HEIGHT),
                             ))
                             .size(Rl((
                                 50. - BORDER_WIDTH / POPUP_WIDTH * 2.,
-                                70. - 2. * BORDER_WIDTH / POPUP_HEIGHT,
+                                80. - 2. * BORDER_WIDTH / POPUP_HEIGHT,
                             )))
                             .pack(),
                         Sprite::default(),
-                        UiColor::from(METRO_BLUE_COLOR),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
                     ))
                     .with_children(|ui| {
                         ui.spawn((
@@ -233,12 +221,14 @@ impl PopupMenu {
                                     ui.spawn((
                                         Name::new("Text"),
                                         UiLayout::window().anchor_right().y(Rl(10.)).pack(),
-                                        TextBundle::default_text(
-                                            Color::WHITE,
-                                            asset_server.load(UI_FONT),
-                                            80.,
-                                            i.to_string(),
-                                        ),
+                                        UiColor::from(Color::WHITE.with_alpha(0.8)),
+                                        UiTextSize::from(Rh(70.)),
+                                        Text2d::new(i.to_string()),
+                                        TextFont {
+                                            font: asset_server.load(UI_FONT),
+                                            font_size: 96.,
+                                            ..default()
+                                        },
                                     ));
                                 });
                                 offset_stats += OFFSET_STATS;
@@ -267,12 +257,14 @@ impl PopupMenu {
                                         ui.spawn((
                                             Name::new("Text"),
                                             UiLayout::window().anchor_center().pack(),
-                                            TextBundle::default_text(
-                                                Color::WHITE,
-                                                asset_server.load(UI_FONT),
-                                                80.,
-                                                "42".to_string(),
-                                            ),
+                                            UiColor::from(Color::WHITE.with_alpha(0.8)),
+                                            UiTextSize::from(Rh(80.)),
+                                            Text2d::new("42"),
+                                            TextFont {
+                                                font: asset_server.load(UI_FONT),
+                                                font_size: 96.,
+                                                ..default()
+                                            },
                                         ))
                                         .id(),
                                     );
@@ -285,20 +277,20 @@ impl PopupMenu {
                         Name::new("Lines block"),
                         UiLayout::window()
                             .anchor_left()
-                            .pos(Rl((50., 30. + BORDER_WIDTH / POPUP_HEIGHT)))
+                            .pos(Rl((50., 20. + BORDER_WIDTH / POPUP_HEIGHT)))
                             .size(Rl((
                                 50. - BORDER_WIDTH / POPUP_WIDTH,
-                                70. - BORDER_WIDTH / POPUP_HEIGHT * 2.,
+                                80. - BORDER_WIDTH / POPUP_HEIGHT * 2.,
                             )))
                             .pack(),
                         Sprite::default(),
-                        UiColor::from(METRO_BLUE_COLOR),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
                     ))
                     .with_children(|ui| {
                         ui.spawn((
                             Name::new("Current lines block"),
-                            UiLayout::window().size(Rl((100., 80.))).pack(),
-                            UiColor::from(METRO_BLUE_COLOR),
+                            UiLayout::window().size(Rl((100., 70.))).pack(),
+                            UiColor::from(METRO_LIGHT_BLUE_COLOR),
                             Sprite::default(),
                         ))
                         .with_children(|ui| {
@@ -314,7 +306,7 @@ impl PopupMenu {
                                             .pack(),
                                         LineHandlerFlag { line_id: i },
                                         Sprite::default(),
-                                        UiColor::from(METRO_BLUE_COLOR),
+                                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
                                         Visibility::Hidden,
                                     ))
                                     .with_children(|ui| {
@@ -323,12 +315,14 @@ impl PopupMenu {
                                             ui.spawn((
                                                 Name::new("line name"),
                                                 UiLayout::window().anchor_center().pack(),
-                                                TextBundle::default_text(
-                                                    Color::WHITE,
-                                                    asset_server.load(UI_FONT),
-                                                    100.,
-                                                    text,
-                                                ),
+                                                UiColor::from(Color::WHITE.with_alpha(0.8)),
+                                                UiTextSize::from(Rh(100.)),
+                                                Text2d::new(text),
+                                                TextFont {
+                                                    font: asset_server.load(UI_FONT),
+                                                    font_size: 96.,
+                                                    ..default()
+                                                },
                                                 Visibility::Inherited,
                                             ))
                                             .id(),
@@ -361,16 +355,67 @@ impl PopupMenu {
                         });
                         ui.spawn((
                             Name::new("Buttons section"),
-                            UiLayout::window().y(Rl(80.)).size(Rl((100., 20.))).pack(),
+                            UiLayout::window().y(Rl(70.)).size(Rl((100., 30.))).pack(),
                         ))
                         .with_children(|ui| {
+                            ui.spawn((
+                                Name::new("Buy Train"),
+                                UiLayout::window().rl_size(100., 35.).rl_pos(0., 0.).pack(),
+                            ))
+                            .with_children(|ui| {
+                                ui.spawn((
+                                    Name::new("New train handler"),
+                                    UiLayout::window()
+                                        .rl_pos(0., 0.)
+                                        .size(Rl((100., 100.)))
+                                        .pack(),
+                                    Sprite::default(),
+                                    UiHover::new().forward_speed(20.0).backward_speed(4.0),
+                                    //                                    UiColor::from(Color::BLACK),
+                                    UiColor::new(vec![
+                                        (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
+                                        (UiHover::id(), Color::WHITE),
+                                    ]),
+                                ))
+                                .with_children(|ui| {
+                                    ui.spawn((
+                                        Name::new("Buy Train"),
+                                        UiLayout::window().anchor_center().pack(),
+                                        UiHover::new().forward_speed(20.0).backward_speed(4.0),
+                                        UiColor::new(vec![
+                                            (UiBase::id(), Color::WHITE),
+                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
+                                        ]),
+                                        UiTextSize::from(Rh(100.)),
+                                        Text2d::new("Купить поезд"),
+                                        TextFont {
+                                            font: asset_server.load(UI_FONT),
+                                            font_size: 96.,
+                                            ..default()
+                                        },
+                                        PickingBehavior::IGNORE,
+                                    ));
+                                });
+                            })
+                            .observe(hover_set::<Pointer<Over>, true>)
+                            .observe(hover_set::<Pointer<Out>, false>)
+                            .observe(|_: Trigger<Pointer<Click>>,mut buy_train: EventWriter<SpawnTrainEvent>, mut buy_train_t: EventWriter<BuyTrainTutorial>,popup_q: Query<&PopupMenu, With<UiLayoutRoot>>| {
+                                let popup = popup_q.get_single().unwrap();
+                                buy_train.send(SpawnTrainEvent{
+                                    line: popup.picked_line,
+                                    station: popup.station,
+                                });
+                                buy_train_t.send(BuyTrainTutorial);
+                            });
+
                             let mut offset_buttons = 0.;
                             for i in RMB_BUTTONS {
                                 let mut button_entity = ui.spawn((
                                     Name::new("Button handler"),
                                     UiLayout::window()
+                                        .y(Rl(35.))
                                         .x(Rl(offset_buttons))
-                                        .size(Rl((50., 100.)))
+                                        .size(Rl((50., 65.)))
                                         .anchor(Anchor::TopLeft)
                                         .pack(),
                                 ));
@@ -382,7 +427,7 @@ impl PopupMenu {
                                             Sprite::default(),
                                             UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                             UiColor::new(vec![
-                                                (UiBase::id(), METRO_BLUE_COLOR),
+                                                (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
                                                 (UiHover::id(), Color::WHITE),
                                             ]),
                                         ))
@@ -397,9 +442,9 @@ impl PopupMenu {
                                                             .backward_speed(4.0),
                                                         UiColor::new(vec![
                                                             (UiBase::id(), Color::WHITE),
-                                                            (UiHover::id(), METRO_BLUE_COLOR),
+                                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
                                                         ]),
-                                                        UiTextSize::from(Rh(70.)),
+                                                        UiTextSize::from(Rh(65.)),
                                                         Text2d::new(i),
                                                         TextFont {
                                                             font: asset_server.load(UI_FONT),
@@ -550,7 +595,7 @@ fn redraw_lines_menu(
             panic!("Error: Popup is not founded");
         };
         for (mut color, _previous_handler, child_prev) in line_handlers_q.iter_mut() {
-            *color = UiColor::from(METRO_BLUE_COLOR);
+            *color = UiColor::from(METRO_LIGHT_BLUE_COLOR);
 
             *text_query
                 .get_mut(*child_prev.iter().next().unwrap())
@@ -561,7 +606,7 @@ fn redraw_lines_menu(
                     .iter_mut()
                     .filter(|(_, line_numb, _)| line_numb.line_id == ev.picked_line_prev)
                     .next().unwrap();
-                *color = UiColor::from(METRO_BLUE_COLOR);
+                *color = UiColor::from(METRO_LIGHT_BLUE_COLOR);
 
                 *text_query
                     .get_mut(*child_prev.iter().next().unwrap())
@@ -576,14 +621,14 @@ fn redraw_lines_menu(
 
         *text_query
             .get_mut(*child_now.iter().next().unwrap())
-            .unwrap() = UiColor::from(Color::BLACK);
+            .unwrap() = UiColor::from(metro.lines[menu.picked_line].color);
 
         let (mut button_press, button_child) = button_q.get_single_mut().unwrap();
 
         *ui_color_button_q
             .get_mut(*button_child.iter().next().unwrap())
             .unwrap() = UiColor::new(vec![
-            (UiBase::id(), METRO_BLUE_COLOR),
+            (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
             (UiHover::id(), Color::WHITE),
         ]);
 
@@ -591,7 +636,7 @@ fn redraw_lines_menu(
             .get_mut(text_references.entities[POPUP_STATION_BUTTON])
             .unwrap() = UiColor::new(vec![
             (UiBase::id(), Color::WHITE),
-            (UiHover::id(), METRO_BLUE_COLOR),
+            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
         ]);
 
         button_press.can_continue = true;
@@ -781,7 +826,7 @@ fn change_visibility_of_lines(
     lines: Res<LinesResource>,
     mut lines_q: Query<&mut Visibility>,
 ) {
-    for ev in ev_change_vision.read() {
+    for _ev in ev_change_vision.read() {
         for i in lines.entities.clone() {
             *lines_q.get_mut(i).unwrap() = Visibility::Hidden;
         }

@@ -4,13 +4,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    cursor::CursorPosition,
-    line::{SpawnLineCurveEvent, UpdateLineRendererEvent},
-    metro::{Direction, Metro},
-    money::Money,
-    station_blueprint::{SetBlueprintColorEvent, StationBlueprint},
-    train::SpawnTrainEvent,
-    GameState,
+    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, money::Money, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, ui::{BuildingLineTutorial, ProlongLineTutorial}, GameState
 };
 
 pub const STATION_NAMES: [&str; 10] = [
@@ -217,6 +211,8 @@ fn build_station(
     mut ev_spawn_station: EventWriter<SpawnStationEvent>,
     mut ev_update_line_renderer: EventWriter<UpdateLineRendererEvent>,
     mut ev_spawn_line: EventWriter<SpawnLineCurveEvent>,
+    mut tutorial_prolong_line_ev: EventWriter<ProlongLineTutorial>,
+    mut tutorial_new_line_ev: EventWriter<BuildingLineTutorial>,
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
     mut money: ResMut<Money>,
 ) {
@@ -241,6 +237,7 @@ fn build_station(
                     position: ev.position,
                     connection: ev.connection,
                 });
+                tutorial_new_line_ev.send(BuildingLineTutorial);
             }
             _ => {
                 let line = &mut metro.lines[ev.line_to_attach];
@@ -248,6 +245,8 @@ fn build_station(
                     Direction::Forwards => line.push_back(ev.position),
                     Direction::Backwards => line.push_front(ev.position),
                 }
+
+                tutorial_prolong_line_ev.send(ProlongLineTutorial);
 
                 ev_update_line_renderer.send(UpdateLineRendererEvent { line_id: line.id });
 
