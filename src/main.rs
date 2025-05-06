@@ -18,6 +18,9 @@ use station::StationPlugin;
 mod station_blueprint;
 use station_blueprint::StationBlueprintPlugin;
 
+mod audio;
+use audio::AudioPlugin;
+
 mod ui;
 use ui::{MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin};
 
@@ -66,6 +69,7 @@ fn main() {
         .add_plugins(MetroPlugin)
         .add_plugins(MetroLinePlugin)
         .add_plugins(TrainPlugin)
+        .add_plugins(AudioPlugin)
         .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin
             ))
         .add_plugins(DistrictPlugin)
