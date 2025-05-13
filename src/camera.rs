@@ -2,7 +2,9 @@ use bevy::{input::mouse::MouseWheel, prelude::*};
 use bevy_lunex::{Dimension, UiLayoutRoot, UiSourceCamera};
 
 use crate::{
-    ui::{ChangeLinesVisibility, MoneyUi, PopupMenu, Tutorial, POPUP_HEIGHT, POPUP_WIDTH},
+    ui::{
+        ChangeLinesVisibility, MoneyUi, PlayerUI, PopupMenu, Tutorial, POPUP_HEIGHT, POPUP_WIDTH,
+    },
     GameState,
 };
 
@@ -51,6 +53,17 @@ fn move_camera(
             With<Tutorial>,
             Without<Camera>,
             Without<MoneyUi>,
+            Without<PlayerUI>,
+        ),
+    >,
+    mut q_player: Query<
+        &mut Transform,
+        (
+            With<UiLayoutRoot>,
+            With<PlayerUI>,
+            Without<Camera>,
+            Without<MoneyUi>,
+            Without<Tutorial>,
         ),
     >,
     mut q_money: Query<
@@ -60,6 +73,7 @@ fn move_camera(
             With<UiLayoutRoot>,
             Without<Tutorial>,
             Without<Camera>,
+            Without<PlayerUI>,
         ),
     >,
     keyboard: Res<ButtonInput<KeyCode>>,
@@ -92,6 +106,13 @@ fn move_camera(
     };
 
     money_root_pos.translation +=
+        direction.extend(0.0) * camera.move_speed * camera.target_zoom * time.delta_secs();
+
+    let Ok(mut player_root_pos) = q_player.get_single_mut() else {
+        return;
+    };
+
+    player_root_pos.translation +=
         direction.extend(0.0) * camera.move_speed * camera.target_zoom * time.delta_secs();
 
     let Ok(mut tutorial_root_pos) = q_tutorial.get_single_mut() else {

@@ -7,7 +7,7 @@ pub struct AudioPlugin;
 pub const MUSIC_NAMES: [&str; 8] = [
     "1.ogg", "2.ogg", "3.ogg", "4.ogg", "5.ogg", "6.ogg", "7.ogg", "8.ogg",
 ];
-pub const SFX_NAMES: [&str; 5] = ["", "", "", "", ""];
+pub const SFX_NAMES: [&str; 2] = ["click.ogg", "wrong.ogg"];
 pub const SFX_METRO_NAMES: [&str; 6] = ["1.ogg", "2.ogg", "3.ogg", "4.ogg", "5.ogg", "6.ogg"];
 
 pub const FADE_TIME: f32 = 2.0;
@@ -15,12 +15,22 @@ pub const FADE_TIME: f32 = 2.0;
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MetroTimer>()
+            .add_event::<PlaySFXEvent>()
+            .add_event::<PlayMetroSFXEvent>()
             .add_event::<ChangeTrackEvent>()
             .add_event::<PlayMetroSFXEvent>()
             .add_systems(Startup, setup)
             .add_systems(
                 Update,
-                (change_track, fade_out_sfx, empty_track, fade_out, fade_in),
+                (
+                    change_track,
+                    play_sfx,
+                    click,
+                    fade_out_sfx,
+                    empty_track,
+                    fade_out,
+                    fade_in,
+                ),
             )
             .add_systems(
                 Update,
@@ -36,21 +46,21 @@ enum PlayerState {
     Playing,
 }
 
-enum PlayerMode {
+pub enum PlayerMode {
     Straight,
     Shuffle,
     SingleRepeat,
 }
 #[derive(Resource)]
 pub struct MusicPlayer {
-    track_list: Vec<Handle<AudioSource>>,
-    sfx_list: Vec<Handle<AudioSource>>,
-    sfx_metro_list: Vec<Handle<AudioSource>>,
-    current_state: PlayerState,
-    player_mode: PlayerMode,
-    current_composition: usize,
-    order: Vec<usize>,
-    sfx_playing: bool,
+    pub track_list: Vec<Handle<AudioSource>>,
+    pub sfx_list: Vec<Handle<AudioSource>>,
+    pub sfx_metro_list: Vec<Handle<AudioSource>>,
+    pub current_state: PlayerState,
+    pub player_mode: PlayerMode,
+    pub current_composition: usize,
+    pub order: Vec<usize>,
+    pub sfx_playing: bool,
 }
 
 impl MusicPlayer {
@@ -94,7 +104,7 @@ impl Default for MetroTimer {
 struct SFX;
 
 #[derive(Component)]
-struct Soundtrack;
+pub struct Soundtrack;
 
 #[derive(Component)]
 struct MetroSounds;
@@ -105,14 +115,20 @@ struct FadeIn(pub f32);
 #[derive(Component)]
 struct FadeOut(pub f32);
 
-#[derive(Component)]
-struct Music;
-
 #[derive(Event)]
 pub struct ChangeTrackEvent;
 
 #[derive(Event)]
 struct PlayMetroSFXEvent;
+
+pub enum SFXType {
+    ClickLKMSound,
+    ErrorSound,
+}
+#[derive(Event)]
+pub struct PlaySFXEvent {
+    pub sfx_to_play: SFXType,
+}
 
 fn tick_timer(
     time: Res<Time>,
@@ -122,14 +138,14 @@ fn tick_timer(
     mut player: ResMut<MusicPlayer>,
 ) {
     if metro_sfx_q.iter().len() != 0 {
-        println!("HOW TF");
         return;
     }
     time_to_sfx.time_to_play.tick(time.delta());
 
     if time_to_sfx.time_to_play.just_finished() {
         play_sfx.send(PlayMetroSFXEvent);
-
+        time_to_sfx.time_to_play.set_duration(Duration::from_secs(rand::rng().random_range(14..60)));
+        time_to_sfx.time_to_play.reset();
         player.sfx_playing = true;
         println!("Timer is over")
     }
@@ -148,6 +164,41 @@ fn fade_out_sfx(
         for music_e in music_q.iter() {
             commands.entity(music_e).insert(FadeIn(1.0));
         }
+    }
+}
+
+fn click(mut sfx_sound_ev: EventWriter<PlaySFXEvent>, mouse: Res<ButtonInput<MouseButton>>) {
+    if mouse.just_pressed(MouseButton::Left) {
+        sfx_sound_ev.send(PlaySFXEvent {
+            sfx_to_play: SFXType::ClickLKMSound,
+        });
+    }
+}
+
+fn play_sfx(
+    mut commands: Commands,
+    music_player: Res<MusicPlayer>,
+    mut play_sfx_ev: EventReader<PlaySFXEvent>,
+) {
+    for ev in play_sfx_ev.read() {
+        let sfx_num;
+        match ev.sfx_to_play {
+            SFXType::ClickLKMSound => {
+                sfx_num = 0;
+            }
+            SFXType::ErrorSound => {
+                sfx_num = 1;
+            }
+        }
+        commands.spawn((
+            AudioPlayer::new(music_player.sfx_list[sfx_num].clone()),
+            SFX,
+            PlaybackSettings {
+                mode: bevy::audio::PlaybackMode::Despawn,
+                volume: Volume::new(0.5),
+                ..default()
+            },
+        ));
     }
 }
 
@@ -267,10 +318,23 @@ fn change_track(
         match game_state.get() {
             GameState::InGame => {
                 println!("game track");
+                let track_num;
+
+                match music_player.player_mode {
+                    PlayerMode::SingleRepeat => {
+                        track_num = music_player.current_composition;
+                    }
+                    _ => {
+                        music_player.current_composition =
+                            (music_player.current_composition + 1) % music_player.order.len();
+
+                        track_num = music_player.current_composition;
+                    }
+                }
                 commands.spawn((
                     AudioPlayer::new(
                         music_player.track_list
-                            [music_player.order[music_player.current_composition + 1]]
+                            [music_player.order[track_num]]
                             .clone(),
                     ),
                     Soundtrack,
@@ -280,8 +344,6 @@ fn change_track(
                         ..default()
                     },
                 ));
-                music_player.current_composition =
-                    (music_player.current_composition + 1) % music_player.order.len();
             }
 
             _ => {
