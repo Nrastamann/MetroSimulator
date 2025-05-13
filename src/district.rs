@@ -197,7 +197,7 @@ fn grow_districts(
         }
 
         // каждую вторую клетку добавляем пассажира в район (т.е. на 24 клетки района должно прийтись 12 пассажиров)
-        if new_district.cells.len() % 4 == 0
+        if new_district.cells.len() % 1 == 0
         && new_district.district_type == DistrictType::Home {
             ev_add_passenger.send(AddPassengerEvent {
                 district_id: district.id
