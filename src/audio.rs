@@ -1,6 +1,7 @@
 use crate::GameState;
 use bevy::{audio::Volume, prelude::*};
-use rand::Rng;
+use bevy_lunex::cosmic_text::Change;
+use rand::{rng, Rng};
 use std::time::Duration;
 pub struct AudioPlugin;
 
@@ -16,6 +17,7 @@ impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
         app.init_resource::<MetroTimer>()
             .add_event::<PlaySFXEvent>()
+            .add_event::<ChangeOrderOfPlaying>()
             .add_event::<PlayMetroSFXEvent>()
             .add_event::<ChangeTrackEvent>()
             .add_event::<PlayMetroSFXEvent>()
@@ -26,6 +28,7 @@ impl Plugin for AudioPlugin {
                     change_track,
                     play_sfx,
                     click,
+                    change_order,
                     fade_out_sfx,
                     empty_track,
                     fade_out,
@@ -56,7 +59,7 @@ pub struct MusicPlayer {
     pub track_list: Vec<Handle<AudioSource>>,
     pub sfx_list: Vec<Handle<AudioSource>>,
     pub sfx_metro_list: Vec<Handle<AudioSource>>,
-    pub current_state: PlayerState,
+    current_state: PlayerState,
     pub player_mode: PlayerMode,
     pub current_composition: usize,
     pub order: Vec<usize>,
@@ -125,9 +128,68 @@ pub enum SFXType {
     ClickLKMSound,
     ErrorSound,
 }
+
 #[derive(Event)]
 pub struct PlaySFXEvent {
     pub sfx_to_play: SFXType,
+}
+
+#[derive(Event)]
+pub struct ChangeOrderOfPlaying;
+
+fn change_order(
+    mut change_order: EventReader<ChangeOrderOfPlaying>,
+    mut music_player: ResMut<MusicPlayer>,
+) {
+    for _ev in change_order.read() {
+        
+        print!("Before: ");
+         for i in music_player.order.iter(){
+            print!("{} ",i);
+        }
+        println!("");
+        
+        match music_player.player_mode {
+            PlayerMode::Straight => {
+                for i in 0..music_player.track_list.len() {
+                    if MUSIC_NAMES[music_player.current_composition] == MUSIC_NAMES[i] {
+                        music_player.current_composition = i;
+                        break;
+                    }
+                }
+
+                for i in 0..music_player.track_list.len() {
+                    music_player.order[i] = i;
+                }
+            }
+
+            PlayerMode::SingleRepeat => {
+                print!("How'd you get there?");
+                return;
+            }
+
+            PlayerMode::Shuffle => {
+                let mut len = music_player.order.len();
+                for i in music_player.current_composition + 1..music_player.order.len() {
+                    music_player
+                        .order
+                        .swap(i, rand::rng().random_range(i..len));
+                }
+                len = music_player.current_composition;
+                for i in 0..music_player.current_composition {
+                    music_player
+                        .order
+                        .swap(i, rand::rng().random_range(i..len));
+                }
+            }
+        }
+        print!("After: ");
+         for i in music_player.order.iter(){
+            print!("{} ",i);
+        }
+        println!("");
+        
+    }
 }
 
 fn tick_timer(
@@ -144,7 +206,9 @@ fn tick_timer(
 
     if time_to_sfx.time_to_play.just_finished() {
         play_sfx.send(PlayMetroSFXEvent);
-        time_to_sfx.time_to_play.set_duration(Duration::from_secs(rand::rng().random_range(14..60)));
+        time_to_sfx
+            .time_to_play
+            .set_duration(Duration::from_secs(rand::rng().random_range(14..60)));
         time_to_sfx.time_to_play.reset();
         player.sfx_playing = true;
         println!("Timer is over")
@@ -333,9 +397,7 @@ fn change_track(
                 }
                 commands.spawn((
                     AudioPlayer::new(
-                        music_player.track_list
-                            [music_player.order[track_num]]
-                            .clone(),
+                        music_player.track_list[music_player.order[track_num]].clone(),
                     ),
                     Soundtrack,
                     PlaybackSettings {

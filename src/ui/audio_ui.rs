@@ -11,7 +11,7 @@ use bevy::{
 use bevy_lunex::*;
 
 use crate::{
-    audio::{ChangeTrackEvent, MusicPlayer, PlayerMode, Soundtrack, MUSIC_NAMES},
+    audio::{ChangeOrderOfPlaying, ChangeTrackEvent, MusicPlayer, PlayerMode, Soundtrack, MUSIC_NAMES},
     camera::MainCamera,
     district::DistrictMap,
     metro::Metro,
@@ -184,7 +184,7 @@ impl PlayerUI {
                                                 );
                                             });
                                         });
-                                        button_e.observe(|clck: Trigger<Pointer<Click>>,mut commands: Commands, button_q: Query<&PlayerButton> , mut music: Query<&mut AudioSink, With<Soundtrack>>,mut music_player: ResMut<MusicPlayer>,player_entities: ResMut<PlayerEntities>, mut text_q: Query<&mut Text2d>,| {
+                                        button_e.observe(|clck: Trigger<Pointer<Click>>,mut change_order_ev: EventWriter<ChangeOrderOfPlaying>, button_q: Query<&PlayerButton> , mut music: Query<&mut AudioSink, With<Soundtrack>>,mut music_player: ResMut<MusicPlayer>,player_entities: ResMut<PlayerEntities>, mut text_q: Query<&mut Text2d>,| {
                                             let button_type = button_q.get(clck.entity()).unwrap();
                                         
                                             if button_type.0 > 2{
@@ -224,19 +224,18 @@ impl PlayerUI {
 
                                                 "По порядку" =>{
                                                     text_for_button = "Случайно";
-
+                                                    change_order_ev.send(ChangeOrderOfPlaying);
                                                     music_player.player_mode = PlayerMode::Shuffle;
                                                 }
                                                 
                                                 "Случайно" =>{
                                                     text_for_button = "Зациклено";
-
                                                     music_player.player_mode = PlayerMode::SingleRepeat;
                                                 }
 
                                                 "Зациклено" =>{
                                                     text_for_button = "По порядку";
-
+                                                    change_order_ev.send(ChangeOrderOfPlaying);
                                                     music_player.player_mode = PlayerMode::Straight;
                                                 }
                                                 _ =>{
