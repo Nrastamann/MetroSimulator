@@ -8,8 +8,7 @@ use bevy::{
 use bevy_lunex::*;
 
 use crate::{
-    camera::MainCamera, district::DistrictMap, metro::Metro, money::Money,
-    passenger::PassengerDatabase, GameState,
+    audio::ChangeTrackEvent, camera::MainCamera, district::DistrictMap, metro::Metro, money::Money, passenger::PassengerDatabase, GameState
 };
 
 use super::{
@@ -252,7 +251,6 @@ impl Tutorial {
 fn track_progress(
     ev_mouse_wheel: EventReader<MouseWheel>,
     keyboard: Res<ButtonInput<KeyCode>>,
-    time: ResMut<Time>,
     mut progress: ResMut<Progress>,
     mut camera_q: Query<&mut Transform, With<MainCamera>>,
     redraw_menu: EventReader<RedrawEvent>,
@@ -261,9 +259,10 @@ fn track_progress(
     mut redraw_hint: EventWriter<RedrawTextEvent>,
     buy_train_ev: EventReader<BuyTrainTutorial>,
     tutorial_ui_root_q: Query<Entity, (With<UiLayoutRoot>, With<Tutorial>)>,
-    mut hint: Query<&mut Text2d, With<HintToRedraw>>,
+    hint: Query<&mut Text2d, With<HintToRedraw>>,
     mut commands: Commands,
     mut state_manager: ResMut<NextState<GameState>>,
+    mut change_music: EventWriter<ChangeTrackEvent>,
 ) {
     //add some text as easter egg, like why are you taking so long to complete the task
     match progress.current_task {
@@ -319,6 +318,8 @@ fn track_progress(
             if keyboard.just_pressed(KeyCode::KeyE) {
                 state_manager.set(GameState::MainMenu);
                 camera_q.get_single_mut().unwrap().translation = Vec3::new(0., 0., 0.);
+
+                change_music.send(ChangeTrackEvent);
                 //add delete on smth.
             }
         }

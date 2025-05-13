@@ -1,4 +1,4 @@
-use crate::GameState;
+use crate::{audio::ChangeTrackEvent, GameState};
 use bevy::prelude::*;
 use bevy_lunex::*;
 
@@ -151,15 +151,17 @@ impl MainMenuScene {
                                     
                                     match button {
                                         "Новая игра" => {
-                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>|{
+                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>,mut change_music: EventWriter<ChangeTrackEvent>|{
                                                 println!("wait how?");
                                                 swap_state.send( SwapStatesEvent { move_to_where: MainMenuStates::NewGame });                                                       
+                                                change_music.send(ChangeTrackEvent);
                                             });
                                         }
                                         "Обучение" => {
-                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>|{
+                                            button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>,mut change_music: EventWriter<ChangeTrackEvent>|{
                                                 println!("wait a?");
                                                 swap_state.send( SwapStatesEvent { move_to_where: MainMenuStates::Tutorial });       
+                                                change_music.send(ChangeTrackEvent);
                                             });
                                         }
                                         "Настройки" => {
