@@ -1,5 +1,7 @@
 use crate::GameState;
 use bevy::{audio::Volume, prelude::*};
+use rand::Rng;
+use std::time::Duration;
 pub struct AudioPlugin;
 
 pub const MUSIC_NAMES: [&str; 8] = [
@@ -12,9 +14,18 @@ pub const FADE_TIME: f32 = 2.0;
 
 impl Plugin for AudioPlugin {
     fn build(&self, app: &mut App) {
-        app.add_event::<ChangeTrackEvent>()
-            .add_systems(OnEnter(GameState::MainMenu), setup)
-            .add_systems(Update, (change_track, empty_track).after(setup));
+        app.init_resource::<MetroTimer>()
+            .add_event::<ChangeTrackEvent>()
+            .add_event::<PlayMetroSFXEvent>()
+            .add_systems(Startup, setup)
+            .add_systems(
+                Update,
+                (change_track, fade_out_sfx, empty_track, fade_out, fade_in),
+            )
+            .add_systems(
+                Update,
+                (tick_timer, play_metro_sfx).run_if(in_state(GameState::InGame)),
+            );
     }
 }
 
@@ -37,6 +48,9 @@ pub struct MusicPlayer {
     sfx_metro_list: Vec<Handle<AudioSource>>,
     current_state: PlayerState,
     player_mode: PlayerMode,
+    current_composition: usize,
+    order: Vec<usize>,
+    sfx_playing: bool,
 }
 
 impl MusicPlayer {
@@ -45,12 +59,33 @@ impl MusicPlayer {
         sfx_list: Vec<Handle<AudioSource>>,
         sfx_metro_list: Vec<Handle<AudioSource>>,
     ) -> Self {
+        let mut order: Vec<usize> = vec![];
+
+        for i in 0..track_list.len() {
+            order.push(i);
+        }
+
         Self {
             track_list,
             sfx_list,
             sfx_metro_list,
             current_state: PlayerState::Playing,
             player_mode: PlayerMode::Straight,
+            current_composition: 0,
+            order,
+            sfx_playing: false,
+        }
+    }
+}
+#[derive(Resource)]
+struct MetroTimer {
+    time_to_play: Timer,
+}
+
+impl Default for MetroTimer {
+    fn default() -> Self {
+        Self {
+            time_to_play: Timer::new(Duration::from_secs(18), TimerMode::Repeating),
         }
     }
 }
@@ -65,16 +100,81 @@ struct Soundtrack;
 struct MetroSounds;
 
 #[derive(Component)]
-struct FadeIn;
+struct FadeIn(pub f32);
 
 #[derive(Component)]
-struct FadeOut;
+struct FadeOut(pub f32);
 
 #[derive(Component)]
 struct Music;
 
 #[derive(Event)]
-struct ChangeTrackEvent;
+pub struct ChangeTrackEvent;
+
+#[derive(Event)]
+struct PlayMetroSFXEvent;
+
+fn tick_timer(
+    time: Res<Time>,
+    mut time_to_sfx: ResMut<MetroTimer>,
+    mut play_sfx: EventWriter<PlayMetroSFXEvent>,
+    metro_sfx_q: Query<Entity, With<MetroSounds>>,
+    mut player: ResMut<MusicPlayer>,
+) {
+    if metro_sfx_q.iter().len() != 0 {
+        println!("HOW TF");
+        return;
+    }
+    time_to_sfx.time_to_play.tick(time.delta());
+
+    if time_to_sfx.time_to_play.just_finished() {
+        play_sfx.send(PlayMetroSFXEvent);
+
+        player.sfx_playing = true;
+        println!("Timer is over")
+    }
+}
+
+fn fade_out_sfx(
+    sfx_q: Query<Entity, With<MetroSounds>>,
+    mut player: ResMut<MusicPlayer>,
+    music_q: Query<Entity, With<Soundtrack>>,
+    mut commands: Commands,
+) {
+    if sfx_q.iter().len() == 0 && player.sfx_playing {
+        player.sfx_playing = false;
+        println!("sfx is over");
+
+        for music_e in music_q.iter() {
+            commands.entity(music_e).insert(FadeIn(1.0));
+        }
+    }
+}
+
+fn play_metro_sfx(
+    mut commands: Commands,
+    mut play_metro_sfx_event: EventReader<PlayMetroSFXEvent>,
+    music_q: Query<Entity, With<Soundtrack>>,
+    music_player: Res<MusicPlayer>,
+) {
+    for _ev in play_metro_sfx_event.read() {
+        for music_e in music_q.iter() {
+            commands.entity(music_e).insert(FadeOut(0.5));
+        }
+        commands.spawn((
+            AudioPlayer::new(
+                music_player.sfx_metro_list
+                    [rand::rng().random_range(0..music_player.sfx_metro_list.len())]
+                .clone(),
+            ),
+            MetroSounds,
+            PlaybackSettings {
+                mode: bevy::audio::PlaybackMode::Despawn,
+                ..default()
+            },
+        ));
+    }
+}
 
 fn empty_track(
     soundtrack: Query<Entity, With<Soundtrack>>,
@@ -85,16 +185,10 @@ fn empty_track(
         print!("why?");
         change_track.send(ChangeTrackEvent);
         player.current_state = PlayerState::Ended;
-    }else{
-        println!("amount of tracks - {}", soundtrack.iter().len());
     }
 }
 
-fn setup(
-    asset_server: Res<AssetServer>,
-    mut commands: Commands,
-    mut change_track: EventWriter<ChangeTrackEvent>,
-) {
+fn setup(asset_server: Res<AssetServer>, mut commands: Commands) {
     let mut track_list: Vec<Handle<AudioSource>> = vec![];
     let mut sfx_list: Vec<Handle<AudioSource>> = vec![];
     let mut sfx_metro_list: Vec<Handle<AudioSource>> = vec![];
@@ -103,10 +197,10 @@ fn setup(
         track_list.push(asset_server.load::<AudioSource>("music/".to_owned() + i));
     }
     for i in SFX_METRO_NAMES {
-        sfx_metro_list.push(asset_server.load::<AudioSource>("sfx/".to_owned() + i));
+        sfx_metro_list.push(asset_server.load::<AudioSource>("metro_sfx/".to_owned() + i));
     }
     for i in SFX_NAMES {
-        sfx_list.push(asset_server.load::<AudioSource>("metro_sfx/".to_owned() + i));
+        sfx_list.push(asset_server.load::<AudioSource>("sfx/".to_owned() + i));
     }
 
     commands.spawn((
@@ -124,28 +218,34 @@ fn setup(
 
 fn fade_out(
     mut commands: Commands,
-    mut audio_sink: Query<(&mut AudioSink, Entity), With<FadeOut>>,
+    mut audio_sink: Query<(&mut AudioSink, Entity, &FadeOut)>,
     time: Res<Time>,
 ) {
-    for (audio, entity) in audio_sink.iter_mut() {
+    for (audio, entity, fade_amount) in audio_sink.iter_mut() {
         let current_volume = audio.volume();
         audio.set_volume(current_volume - Volume::new(time.delta_secs() / FADE_TIME).get());
         if audio.volume() <= 0.0 {
             commands.entity(entity).despawn();
+            println!("Done fading, removing track");
+        }
+        if fade_amount.0 >= audio.volume() {
+            audio.set_volume(fade_amount.0);
+            commands.entity(entity).remove::<FadeOut>();
+            println!("Done fading");
         }
     }
 }
 
 fn fade_in(
     mut commands: Commands,
-    mut audio_sink: Query<(&mut AudioSink, Entity), With<FadeIn>>,
+    mut audio_sink: Query<(&mut AudioSink, Entity, &FadeIn)>,
     time: Res<Time>,
 ) {
-    for (mut audio, entity) in audio_sink.iter_mut() {
+    for (audio, entity, fade) in audio_sink.iter_mut() {
         let current_volume = audio.volume();
         audio.set_volume(current_volume + Volume::new(time.delta_secs() / FADE_TIME).get());
-        if audio.volume() >= 1.0 {
-            audio.set_volume(1.0);
+        if audio.volume() >= fade.0 {
+            audio.set_volume(fade.0);
             commands.entity(entity).remove::<FadeIn>();
         }
     }
@@ -153,24 +253,39 @@ fn fade_in(
 
 fn change_track(
     mut commands: Commands,
-    soundtrack: Query<Entity, (With<Music>, With<AudioSink>)>,
+    soundtrack: Query<Entity, (With<Soundtrack>, With<AudioSink>)>,
     mut change_track_ev: EventReader<ChangeTrackEvent>,
     game_state: Res<State<GameState>>,
-    global_vol: Res<GlobalVolume>, //kinda useless?
     mut music_player: ResMut<MusicPlayer>,
 ) {
-    for ev in change_track_ev.read() {
+    for _ev in change_track_ev.read() {
         for music in soundtrack.iter() {
-            commands.entity(music).insert(FadeOut);
+            commands.entity(music).insert(FadeOut(0.0));
             println!("fade");
         }
+
         match game_state.get() {
             GameState::InGame => {
-
-                //просто ставим след трек в ingame, надо добавить в ивент, как мы поменяли звук, он кончился/игрок поменял
+                println!("game track");
+                commands.spawn((
+                    AudioPlayer::new(
+                        music_player.track_list
+                            [music_player.order[music_player.current_composition + 1]]
+                            .clone(),
+                    ),
+                    Soundtrack,
+                    PlaybackSettings {
+                        mode: bevy::audio::PlaybackMode::Despawn,
+                        volume: Volume::new(1.),
+                        ..default()
+                    },
+                ));
+                music_player.current_composition =
+                    (music_player.current_composition + 1) % music_player.order.len();
             }
+
             _ => {
-                println!("new track");
+                println!("menu track");
                 commands.spawn((
                     AudioPlayer::new(music_player.track_list[0].clone()),
                     Soundtrack,
