@@ -9,3 +9,6 @@ pub use tutorial_ui::*;
 
 mod money_ui;
 pub use money_ui::*;
+
+mod audio_ui;
+pub use audio_ui::*;
