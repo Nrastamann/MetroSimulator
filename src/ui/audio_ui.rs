@@ -46,6 +46,7 @@ pub struct PlayerUI;
 #[derive(Resource, Default)]
 pub struct PlayerEntities {
     entities_text: Vec<Entity>,
+    entities_tracks: Vec<Entity>
 }
 
 #[derive(Component, Default)]
@@ -244,9 +245,53 @@ impl PlayerUI {
                                             }
                                             text.0 = text_for_button.to_string();
                                         });
-
                                         offset += 33.;
                                     }
+                                });
+                            });
+                            ui.spawn((
+                                Name::new("Bottom Part"), 
+                                UiLayoutTypeWindow::new().anchor_left()
+                                .y(Rl(20.)).rl_size(100., 80.).pack()
+                            )).with_children(|ui|{
+                                ui.spawn((
+                                    Name::new("Tracklist"),
+                                    UiLayoutTypeWindow::new().anchor_left().rl_size(100., 90.).pack()
+                                )).with_children(|ui|{
+                                    let mut offset: f32 = 0.;
+                                    for i in MUSIC_NAMES{
+                                        if offset.round() == 100.0{
+                                            break;
+                                        }
+                                    player_entities.entities_tracks.push(ui.spawn((
+                                        Name::new(i.to_string()),
+                                        UiLayoutTypeWindow::new().anchor_left().rl_size(100., 20.).y(Rl(offset)).pack(),
+                                        Sprite::default(),
+                                        UiColor::from(Color::srgba(255., 255., 255., 0.2)),
+
+                                    )).with_children(|ui|{
+                                    ui.spawn((
+                                       Name::new("Track"),
+                                       UiLayoutTypeWindow::new().anchor_center().pack(),
+                                       UiColor::from(Color::BLACK),
+                                       UiTextSize::from(Rh(100.)),
+                                       Text2d::new(i[..i.len()-4].to_string()),
+                                       TextFont {
+                                           font: asset_server.load(UI_FONT),
+                                           font_size: 96.,
+                                           ..default()
+                                       },
+                                       PickingBehavior::IGNORE,
+                                    ));
+                                }).id());
+                            offset+=20.;
+                            }
+                            });
+                                ui.spawn((
+                                    Name::new("Buttons section"),
+                                    UiLayoutTypeWindow::new().anchor_left().rl_pos(0.,90.).rl_size(100., 10.).pack()
+                                )).with_children(|ui|{
+                                    //spawn buttons there
                                 });
                             });
                         });
