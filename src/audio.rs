@@ -142,13 +142,12 @@ fn change_order(
     mut music_player: ResMut<MusicPlayer>,
 ) {
     for _ev in change_order.read() {
-        
         print!("Before: ");
-         for i in music_player.order.iter(){
-            print!("{} ",i);
+        for i in music_player.order.iter() {
+            print!("{} ", i);
         }
         println!("");
-        
+
         match music_player.player_mode {
             PlayerMode::Straight => {
                 for i in 0..music_player.track_list.len() {
@@ -171,24 +170,19 @@ fn change_order(
             PlayerMode::Shuffle => {
                 let mut len = music_player.order.len();
                 for i in music_player.current_composition + 1..music_player.order.len() {
-                    music_player
-                        .order
-                        .swap(i, rand::rng().random_range(i..len));
+                    music_player.order.swap(i, rand::rng().random_range(i..len));
                 }
                 len = music_player.current_composition;
                 for i in 0..music_player.current_composition {
-                    music_player
-                        .order
-                        .swap(i, rand::rng().random_range(i..len));
+                    music_player.order.swap(i, rand::rng().random_range(i..len));
                 }
             }
         }
         print!("After: ");
-         for i in music_player.order.iter(){
-            print!("{} ",i);
+        for i in music_player.order.iter() {
+            print!("{} ", i);
         }
         println!("");
-        
     }
 }
 
