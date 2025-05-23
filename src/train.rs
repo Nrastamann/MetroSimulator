@@ -3,7 +3,12 @@ use std::time::Duration;
 use bevy::prelude::*;
 
 use crate::{
-    metro::{Direction, Metro}, money::Money, passenger::PassengerDatabase, station::{Station, StationButton, STATION_MAX_PASSENGERS}, ui::MoneyRedrawEvent, GameState
+    metro::{Direction, Metro},
+    money::Money,
+    passenger::PassengerDatabase,
+    station::{Station, StationButton, STATION_MAX_PASSENGERS},
+    ui::MoneyRedrawEvent,
+    GameState,
 };
 
 const TRAIN_STOP_TIME_SECS: f32 = 1.0;
@@ -17,7 +22,13 @@ impl Plugin for TrainPlugin {
         app.add_event::<SpawnTrainEvent>();
         app.add_systems(
             Update,
-            (spawn_train, move_train, stop_train, switch_train_direction),
+            (
+                spawn_train,
+                move_train,
+                stop_train,
+                switch_train_direction,
+                update_train_text,
+            ),
         );
     }
 }
@@ -75,13 +86,15 @@ fn spawn_train(
         let mesh = meshes.add(Rectangle::new(36., 16.));
         let material = materials.add(line.color);
 
-        commands.spawn((
-            StateScoped(GameState::InGame),
-            Mesh2d(mesh),
-            MeshMaterial2d(material),
-            Transform::from_translation(Vec3::new(position.0 as f32, position.1 as f32, -1.0)),
-            Train::new(ev.line),
-        ));
+        commands
+            .spawn((
+                StateScoped(GameState::InGame),
+                Mesh2d(mesh),
+                MeshMaterial2d(material),
+                Transform::from_translation(Vec3::new(position.0 as f32, position.1 as f32, 1.0)),
+                Train::new(ev.line),
+            ))
+            .with_child((Text2d::new("0"),));
     }
 }
 
@@ -260,6 +273,21 @@ fn switch_train_direction(mut q_train: Query<&mut Train>, metro: Res<Metro>) {
         }
         if train.current == curve_positions.len() - 1 && train.direction == Direction::Forwards {
             train.direction = Direction::Backwards;
+        }
+    }
+}
+
+fn update_train_text(
+    mut q_train_text: Query<(&mut Text2d, &Parent)>,
+    q_train: Query<(&Train, Entity)>,
+) {
+    for (train, e_train) in q_train.iter() {
+        for (mut text, parent) in q_train_text.iter_mut() {
+            if e_train != parent.get() {
+                continue;
+            }
+
+            text.0 = train.passenger_ids.len().to_string();
         }
     }
 }

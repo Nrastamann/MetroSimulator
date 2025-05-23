@@ -24,6 +24,7 @@ impl Plugin for PassengerPlugin {
                 fill_passenger_pool
                     // не слишком часто делаем проверки на заполненный пул мест пассажира
                     .run_if(on_timer(Duration::from_millis(100))),
+                stop_moving,
             )
                 .run_if(in_state(GameState::InGame)),
         );
@@ -231,6 +232,48 @@ fn start_moving(
                     district.passenger_ids.remove(remove_index);
                     break 'outer;
                 }
+            }
+        }
+    }
+}
+
+fn stop_moving(
+    database: Res<PassengerDatabase>,
+    mut district_map: ResMut<DistrictMap>,
+    metro: Res<Metro>,
+    mut q_station_button: Query<(&mut StationButton, &Station)>,
+) {
+    for line in metro.lines.iter() {
+        for station in line.stations.iter() {
+            let Some((mut station_button, _)) = q_station_button
+                .iter_mut()
+                .filter(|(_, &st)| station.position == st.position)
+                .next()
+            else {
+                continue;
+            };
+
+            for passenger_id in station_button.passenger_ids.clone().iter() {
+                let Some(passenger) = database.0.get(passenger_id) else {
+                    continue;
+                };
+
+                if passenger.destination_station.is_some() {
+                    continue;
+                }
+
+                let district = &mut district_map.districts
+                    [passenger.district_ids[passenger.current_desire as usize]];
+
+                district.passenger_ids.push(*passenger_id);
+
+                let remove_index = station_button
+                    .passenger_ids
+                    .iter()
+                    .position(|id| id == passenger_id)
+                    .unwrap();
+
+                station_button.passenger_ids.remove(remove_index);
             }
         }
     }
