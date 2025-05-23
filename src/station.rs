@@ -1,13 +1,20 @@
-use std::{f32::consts::PI, usize};
+use std::{f32::consts::PI, time::Duration, usize};
 
 use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, money::Money, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, ui::{BuildingLineTutorial, MoneyRedrawEvent, ProlongLineTutorial}, GameState
+    cursor::CursorPosition,
+    line::{SpawnLineCurveEvent, UpdateLineRendererEvent},
+    metro::{Direction, Metro},
+    money::Money,
+    station_blueprint::{SetBlueprintColorEvent, StationBlueprint},
+    train::SpawnTrainEvent,
+    ui::{BuildingLineTutorial, MoneyRedrawEvent, ProlongLineTutorial},
+    GameState,
 };
 
-pub const STATION_NAMES: [&str; 10] = [
+pub const STATION_NAMES: [&str; 11] = [
     "Достоевская",
     "Обводный канал",
     "Озерки",
@@ -18,6 +25,7 @@ pub const STATION_NAMES: [&str; 10] = [
     "Купчино",
     "Дыбенко",
     "Звездная",
+    "Рыбацкое",
 ];
 
 const STATION_COST: u32 = 100;
@@ -40,6 +48,7 @@ impl Plugin for StationPlugin {
                 build_station,
                 debug_draw_passengers,
                 detect_left_release,
+                toggle_warning
             )
                 .run_if(in_state(GameState::InGame)),
         );
@@ -57,11 +66,23 @@ impl Station {
     }
 }
 
-#[derive(Default, Component)]
+#[derive(Component)]
 pub struct StationButton {
     pub selected: bool,
     pub passenger_ids: Vec<usize>,
     pub name: String,
+    gameover_timer: Timer,
+}
+
+impl Default for StationButton {
+    fn default() -> Self {
+        Self {
+            selected: false,
+            passenger_ids: vec![],
+            name: STATION_NAMES[rand::rng().random_range(0..10)].to_string(),
+            gameover_timer: Timer::new(Duration::from_secs(20), TimerMode::Once),
+        }
+    }
 }
 
 #[derive(Event)]
@@ -105,13 +126,22 @@ fn spawn_station(
                 StateScoped(GameState::InGame),
                 Mesh2d(meshes.add(Circle::new(20.))),
                 MeshMaterial2d(materials.add(Color::WHITE)),
-                Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
+                Transform::from_translation(Vec3::new(0.0, 0.0, 1.0)),
             ))
             .id();
 
-        let mut button = StationButton::default();
-        button.name = STATION_NAMES[rand::rng().random_range(0..10)].to_string();
+        let button = StationButton::default();
         // println!("name - {}", button.name);
+
+        let warning = commands
+            .spawn((
+                Text2d::new("!"),
+                TextColor(Color::srgb(1.0, 0.0, 0.0)),
+                TextFont::from_font_size(50.0),
+                Visibility::Hidden,
+                Transform::from_translation(Vec3::new(0.0, 0.0, 2.0)),
+            ))
+            .id();
 
         metro
             .stations
@@ -129,7 +159,7 @@ fn spawn_station(
                 button,
                 station,
             ))
-            .add_child(inner_circle);
+            .add_children(&[inner_circle, warning]);
     }
 }
 
@@ -195,13 +225,11 @@ fn build_new(
                 }
                 ev_start_build.send(StartBuildingEvent {
                     connection: selected_station.position,
-                    direction: direction,
+                    direction,
                     line_to_attach: line_id,
                     from_menu: false,
                 });
-                ev_set_blueprint.send(
-                    SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)),
-                );
+                ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)));
             }
         }
     }
@@ -217,7 +245,7 @@ fn build_station(
     mut tutorial_new_line_ev: EventWriter<BuildingLineTutorial>,
     mut ev_spawn_train: EventWriter<SpawnTrainEvent>,
     mut money: ResMut<Money>,
-    mut change_money_ui: EventWriter<MoneyRedrawEvent>
+    mut change_money_ui: EventWriter<MoneyRedrawEvent>,
 ) {
     for ev in ev_build_station.read() {
         if money.0 < STATION_COST {
@@ -353,5 +381,41 @@ fn check_building_position(
     } else {
         blueprint.can_build = true;
         ev_set_blueprint.send(SetBlueprintColorEvent(Color::BLACK.with_alpha(0.5)));
+    }
+}
+
+fn toggle_warning(
+    mut q_station: Query<(Entity, &mut StationButton)>,
+    mut q_warnings: Query<(&Parent, &mut Visibility, &mut TextColor), With<Text2d>>,
+    time: Res<Time>,
+    mut next_state: ResMut<NextState<GameState>>,
+) {
+    for (station_e, mut station) in q_station.iter_mut() {
+        for (_, mut warning, mut color) in q_warnings
+            .iter_mut()
+            .filter(|(&ref parent, _, _)| parent.get() == station_e)
+        {
+            if station.passenger_ids.len() as u32 >= STATION_MAX_PASSENGERS {
+                *warning = Visibility::Visible;
+                station.gameover_timer.tick(time.delta());
+
+                if station.gameover_timer.fraction_remaining() < 0.5 {
+                    color.0 = Color::srgb(0.8, 0.8, 0.0);
+                }
+
+                if station.gameover_timer.fraction_remaining() < 0.25 {
+                    color.0 = Color::srgb(1.0, 0.0, 0.0);
+                }
+
+                if station.gameover_timer.just_finished() {
+                    error!("GAYM OVA");
+                    next_state.set(GameState::MainMenu);
+                }
+            } else {
+                *warning = Visibility::Hidden;
+                station.gameover_timer.reset();
+                color.0 = Color::srgb(0.0, 1.0, 0.0);
+            }
+        }
     }
 }

@@ -208,7 +208,7 @@ fn move_train(
 
             money.0 += offloaded_passengers.len() as u32;
             redraw_money.send(MoneyRedrawEvent);
-            println!("денге: {}", money.0);
+            // println!("денге: {}", money.0);
 
             load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
 
