@@ -33,13 +33,18 @@ impl Plugin for AudioUIPlugin {
         app.init_resource::<PlayerEntities>()
             .add_event::<HideUIEvent>()
             .add_event::<ShowUIEvent>()
-            .add_event::<PlayerUISpawnEvent>();
+            .add_event::<PlayerUISpawnEvent>()
+            .add_event::<RedrawTracksEvent>();
         app.add_systems(
             Update,
-            (show_player, hide_player, hotkey_player).run_if(in_state(GameState::InGame)),
+            (show_player, hide_player, redraw_tracks, hotkey_player).run_if(in_state(GameState::InGame)),
         );
         app.add_systems(OnEnter(GameState::InGame), PlayerUI::spawn);
     }
+}
+#[derive(Event)]
+pub struct RedrawTracksEvent{
+    from_player: bool
 }
 #[derive(Component)]
 pub struct PlayerUI;
@@ -50,6 +55,9 @@ pub struct PlayerEntities {
     entities_tracks: Vec<Entity>
 }
 
+#[derive(Component)]
+pub struct PageNumber(pub usize);
+
 #[derive(Component, Default)]
 pub struct PlayerButton(pub usize);
 
@@ -59,11 +67,12 @@ pub struct HideUIEvent;
 #[derive(Event)]
 pub struct ShowUIEvent;
 
+#[derive(Clone,Copy, PartialEq)]
 pub enum ComponentOrientation{
     Left,
     Right
 }
-#[derive(Component)]
+#[derive(Component, Clone, Copy)]
 pub struct Arrow(pub ComponentOrientation);
 
 #[derive(Event)]
@@ -268,7 +277,7 @@ impl PlayerUI {
                                 )).with_children(|ui|{
                                     let mut offset: f32 = 0.;
                                     for i in MUSIC_NAMES{
-                                        if offset.round() == 100.0{
+                                        if offset.round() >= 100.0{
                                             break;
                                         }
                                     player_entities.entities_tracks.push(ui.spawn((
@@ -317,6 +326,7 @@ impl PlayerUI {
                                                 UiColor::from(Color::BLACK),
                                                 UiTextSize::from(Rh(100.)),
                                                 Text2d::new("1".to_string()),
+                                                PageNumber(1),
                                                 TextFont {
                                                     font: asset_server.load(UI_FONT),
                                                     font_size: 96.,
@@ -326,12 +336,15 @@ impl PlayerUI {
                                             ));
                                         }else{
                                             let arrow;
+                                            let visibility;
                                             match i{
                                                 "Влево" => {
                                                     arrow = Arrow(ComponentOrientation::Left);
+                                                    visibility = Visibility::Hidden;
                                                 }
                                                 _ =>{
                                                     arrow = Arrow(ComponentOrientation::Right);
+                                                    visibility = Visibility::Visible;
                                                 }
                                             }
                                         ui.spawn((
@@ -339,14 +352,27 @@ impl PlayerUI {
                                             UiLayoutTypeWindow::new().full().pack(),
                                             Sprite::from_image(asset_server.load("button.png")),
                                             arrow,
+                                            visibility,
                                         )).observe(|clck: Trigger<Pointer<Click>>,
-                                            mut change_order_ev: EventWriter<ChangeOrderOfPlaying>, 
-                                            button_q: Query<&PlayerButton> , 
-                                            mut music: Query<&mut AudioSink, With<Soundtrack>>,
-                                            mut music_player: ResMut<MusicPlayer>,
-                                            player_entities: ResMut<PlayerEntities>, 
-                                            mut text_q: Query<&mut Text2d>,| {
-                                                
+                                            mut redraw_tracks_ev: EventWriter<RedrawTracksEvent>, 
+                                            mut button_q: Query<(&Arrow, &mut Visibility)> , 
+                                            mut text_q: Query<(&mut Text2d, &mut PageNumber)>,| {
+                                                let (button_type, mut visibility) = button_q.get_mut(clck.target).unwrap(); 
+                                                if *visibility == Visibility::Hidden{
+                                                    return
+                                                }
+
+                                                let (mut text, mut page)  = text_q.get_single_mut().unwrap();
+                                                    match button_type.0{
+                                                        ComponentOrientation::Left =>{
+                                                            page.0 -= 1;
+                                                        }
+                                                        ComponentOrientation::Right =>{
+                                                            page.0 += 1;                                                            
+                                                        }
+                                                    }
+                                                    text.0 = page.0.to_string();
+                                                    redraw_tracks_ev.send(RedrawTracksEvent{from_player: true});                                                    
                                             });
                                     }
                                     }); 
@@ -358,6 +384,34 @@ impl PlayerUI {
                         });
                     });
             });
+    }
+}
+
+fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>, 
+    mut player_buttons: Query<(&Arrow, &mut Visibility)>,
+    mut pages_q: Query<&mut PageNumber>,){
+    for ev in redraw_tracks_ev.read(){
+        let page_count = pages_q.get_single().unwrap();
+
+        for (arrow, mut visibility) in player_buttons.iter_mut(){
+            if arrow.0 == ComponentOrientation::Left && page_count.0 > 1   {
+                *visibility = Visibility::Visible; 
+                continue;
+            }
+            if arrow.0 == ComponentOrientation::Right && page_count.0 * 5 < MUSIC_NAMES.len() {
+                *visibility = Visibility::Visible; 
+                continue;
+            } //FIX THIS SHIT
+            print!("{}",page_count.0);
+        }
+        match ev.from_player{
+            true =>{
+
+            }
+            _ =>{
+
+            }
+        }
     }
 }
 
