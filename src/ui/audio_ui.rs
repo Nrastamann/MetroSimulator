@@ -20,7 +20,8 @@ use crate::{
     GameState,
 };
 pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Мут"];
-
+pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
+pub const PLAYER_TOP_BUTTONS: [&str; 3] = ["Влево", "Пауза", "Вправо"];
 use super::{
     LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_LIGHT_BLUE_COLOR, UI_FONT,
 };
@@ -57,6 +58,13 @@ pub struct HideUIEvent;
 
 #[derive(Event)]
 pub struct ShowUIEvent;
+
+pub enum ComponentOrientation{
+    Left,
+    Right
+}
+#[derive(Component)]
+pub struct Arrow(pub ComponentOrientation);
 
 #[derive(Event)]
 pub struct PlayerUISpawnEvent;
@@ -291,8 +299,61 @@ impl PlayerUI {
                                     Name::new("Buttons section"),
                                     UiLayoutTypeWindow::new().anchor_left().rl_pos(0.,90.).rl_size(100., 10.).pack()
                                 )).with_children(|ui|{
+                                    let mut offset = 0.;
+                                    for i in PLAYER_BOT_BUTTONS{
+                                        println!("{}", offset);
+                                        let mut size = 30.;
+                                        if i == "Номер стр"{
+                                            size = 40.;
+                                        }
+                                        ui.spawn((
+                                        Name::new(i.to_string()),
+                                        UiLayoutTypeWindow::new().anchor_left().rl_pos(offset, 0.).rl_size(size, 100.).pack(),
+                                    )).with_children(|ui|{ 
+                                        if i == "Номер стр"{
+                                             ui.spawn((
+                                                Name::new(i.to_string()),
+                                                UiLayoutTypeWindow::new().anchor_center().pack(),
+                                                UiColor::from(Color::BLACK),
+                                                UiTextSize::from(Rh(100.)),
+                                                Text2d::new("1".to_string()),
+                                                TextFont {
+                                                    font: asset_server.load(UI_FONT),
+                                                    font_size: 96.,
+                                                    ..default()
+                                                },
+                                                PickingBehavior::IGNORE,         
+                                            ));
+                                        }else{
+                                            let arrow;
+                                            match i{
+                                                "Влево" => {
+                                                    arrow = Arrow(ComponentOrientation::Left);
+                                                }
+                                                _ =>{
+                                                    arrow = Arrow(ComponentOrientation::Right);
+                                                }
+                                            }
+                                        ui.spawn((
+                                            Name::new("Button"),
+                                            UiLayoutTypeWindow::new().full().pack(),
+                                            Sprite::from_image(asset_server.load("button.png")),
+                                            arrow,
+                                        )).observe(|clck: Trigger<Pointer<Click>>,
+                                            mut change_order_ev: EventWriter<ChangeOrderOfPlaying>, 
+                                            button_q: Query<&PlayerButton> , 
+                                            mut music: Query<&mut AudioSink, With<Soundtrack>>,
+                                            mut music_player: ResMut<MusicPlayer>,
+                                            player_entities: ResMut<PlayerEntities>, 
+                                            mut text_q: Query<&mut Text2d>,| {
+                                                
+                                            });
+                                    }
+                                    }); 
                                     //spawn buttons there
-                                });
+                                    offset += size;
+                                }
+                            });
                             });
                         });
                     });
