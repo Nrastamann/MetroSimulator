@@ -344,7 +344,7 @@ impl PlayerUI {
                                                 }
                                                 _ =>{
                                                     arrow = Arrow(ComponentOrientation::Right);
-                                                    visibility = Visibility::Visible;
+                                                    visibility = Visibility::Hidden;
                                                 }
                                             }
                                         ui.spawn((
@@ -366,9 +366,17 @@ impl PlayerUI {
                                                     match button_type.0{
                                                         ComponentOrientation::Left =>{
                                                             page.0 -= 1;
+
+                                                            if page.0 <= 1{
+                                                                *visibility = Visibility::Hidden;
+                                                            }
                                                         }
                                                         ComponentOrientation::Right =>{
-                                                            page.0 += 1;                                                            
+                                                            page.0 += 1;
+                                                           
+                                                            if page.0 * 5 >= MUSIC_NAMES.len(){
+                                                                *visibility = Visibility::Hidden;
+                                                            }                                                            
                                                         }
                                                     }
                                                     text.0 = page.0.to_string();
@@ -396,12 +404,13 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
         for (arrow, mut visibility) in player_buttons.iter_mut(){
             if arrow.0 == ComponentOrientation::Left && page_count.0 > 1   {
                 *visibility = Visibility::Visible; 
+                println!("GOL");
                 continue;
             }
             if arrow.0 == ComponentOrientation::Right && page_count.0 * 5 < MUSIC_NAMES.len() {
                 *visibility = Visibility::Visible; 
                 continue;
-            } //FIX THIS SHIT
+            }
             print!("{}",page_count.0);
         }
         match ev.from_player{
@@ -416,24 +425,31 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
 }
 
 fn hide_player(
-    mut player_q: Query<&mut Visibility, (With<PlayerUI>, With<UiLayoutRoot>)>,
+    mut player_q: Query<&mut Visibility, (With<PlayerUI>, With<UiLayoutRoot>, Without<Arrow>)>,
     mut hide_ui_ev: EventReader<HideUIEvent>,
+    mut buttons_q: Query<&mut Visibility, (With<Arrow>,Without<UiLayoutRoot>)>,
 ) {
     for _ev in hide_ui_ev.read() {
         let mut player_v = player_q.get_single_mut().unwrap();
 
         *player_v = Visibility::Hidden;
+    
+        for mut button in buttons_q.iter_mut(){
+            *button = Visibility::Hidden;
+        }
     }
 }
 
 fn show_player(
     mut player_q: Query<&mut Visibility, (With<PlayerUI>, With<UiLayoutRoot>)>,
     mut show_ui_ev: EventReader<ShowUIEvent>,
+    mut redraw_tracks_ev: EventWriter<RedrawTracksEvent>, 
 ) {
     for _ev in show_ui_ev.read() {
         let mut player_v = player_q.get_single_mut().unwrap();
 
         *player_v = Visibility::Visible;
+        redraw_tracks_ev.send(RedrawTracksEvent { from_player: false });
     }
 }
 
