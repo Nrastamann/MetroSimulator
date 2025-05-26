@@ -23,7 +23,7 @@ pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Му�
 pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
 pub const PLAYER_TOP_BUTTONS: [&str; 3] = ["Влево", "Пауза", "Вправо"];
 use super::{
-    LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_LIGHT_BLUE_COLOR, UI_FONT,
+    LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_LIGHT_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
 };
 
 pub struct AudioUIPlugin;
@@ -115,7 +115,7 @@ impl PlayerUI {
                                 .rl_pos(30., 30.)
                                 .rl_size(40., 40.)
                                 .pack(),
-                            UiColor::from(Color::srgba(255., 255., 255., 0.2)),
+                            UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_HIGHEST)),
                             Sprite::default(),
                         ))
                         .with_children(|ui| {
@@ -138,7 +138,8 @@ impl PlayerUI {
                                     ui.spawn((
                                         Name::new("TextHandler"),
                                         UiLayoutTypeWindow::new().anchor_center().pack(),
-                                        UiColor::from(Color::BLACK.with_alpha(0.95)),
+                                        UiColor::from(Color::BLACK//.with_alpha(0.95)
+                                    ),
                                         UiTextSize::from(Rh(100.)),
                                         CurrentTrack,
                                         Text2d::new(MUSIC_NAMES[0][..MUSIC_NAMES[0].len()-4].to_string()),
@@ -296,7 +297,7 @@ impl PlayerUI {
                                         Name::new(i.to_string()),
                                         UiLayoutTypeWindow::new().anchor_left().rl_size(100., 20.).y(Rl(offset)).pack(),
                                         Sprite::default(),
-                                        UiColor::from(Color::srgba(255., 255., 255., 0.2)),
+                                        UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_HIGHEST)),
 
                                     )).with_children(|ui|{
                                     ui.spawn((
@@ -440,7 +441,7 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
         let mut counter = (page_count.0 - 1) * 5;
         for track_e in player_enitites.entities_tracks.iter(){
             let (mut track_handler_color, kids) = tracks_holders_q.get_mut(*track_e).unwrap(); 
-            *track_handler_color = UiColor::from(Color::srgba(255., 255., 255., 0.2));
+            *track_handler_color = UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_HIGHEST));
             for kid in kids.iter(){
                 let (mut color,mut text) = track_names_q.get_mut(*kid).unwrap();
                 
@@ -476,7 +477,7 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
             name_tag_q.get_single_mut().unwrap().0 = MUSIC_NAMES[picked_track + (page_count.0 - 1) * 5][..MUSIC_NAMES[picked_track + (page_count.0 - 1) * 5].len()-4].to_string();
 
             let (mut track_handler_color, kids) = tracks_holders_q.get_mut(player_enitites.entities_tracks[picked_track]).unwrap(); 
-            *track_handler_color = UiColor::from(Color::srgba(0xd3 as f32 /255., 0xd3 as f32 /255., 0xd3 as f32 /255., 0.8));
+            *track_handler_color = UiColor::from(Color::srgba(0xd3 as f32 /255., 0xd3 as f32 /255., 0xd3 as f32 /255., OPACITY_LEVEL_HIGHEST));
             for _kid in kids.iter(){
 //                let (mut color,mut text) = track_names_q.get_mut(*kid).unwrap();
             }
