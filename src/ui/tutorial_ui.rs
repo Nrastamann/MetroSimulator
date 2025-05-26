@@ -46,13 +46,14 @@ impl Plugin for TutorialUIPlugin {
 #[derive(Default, Copy, Clone)]
 pub enum TasksInTutorial {
     #[default]
-    MoveCamera,
+    MoveCamera = 0,
     UseZoom,
     OpenBuildMenu,
     ProlongTheLine,
     BuildNewLine,
     BuyTrain,
     EndOfTutorial,
+    End
 }
 
 #[derive(Event)]
@@ -99,6 +100,9 @@ const TUTORIAL_HINTS: [&str; 7] = [
 ];
 #[derive(Component)]
 struct HintToRedraw;
+
+#[derive(Component)]
+struct BubbleRedraw(usize);
 
 #[derive(Event)]
 pub struct RedrawTextEvent;
@@ -176,6 +180,7 @@ impl Tutorial {
                                 ))
                                 .with_children(|ui| {
                                     let mut current_pos = 0.;
+                                    let mut index = 0;
                                     for _ in TUTORIAL_TASKS.iter() {
                                         ui.spawn((
                                             Name::new("Checkmark boundary"),
@@ -188,15 +193,21 @@ impl Tutorial {
                                         .with_children(
                                             |ui| {
                                                 ui.spawn((
-                                                    Name::new(""),
-                                                    Mesh2d(meshes.add(Circle::new(17.5))),
-                                                    MeshMaterial2d(materials.add(Color::WHITE)),
-                                                    Transform::from_translation(Vec3::new(
-                                                        0.0, 0.0, 2.0,
-                                                    )),
+                                                    Name::new("buble"),
+                                                    BubbleRedraw(index),
+                                                    UiLayoutTypeWindow::new().rl_size(50.,100.).pack(),
+                                                    Sprite{
+                                                        image: asset_server.load("excl_mark.png"),
+                                                        ..default()
+                                                    },
+                                                    // Transform::from_translation(Vec3::new(
+                                                    //     0.0, 0.0, 2.0,
+                                                    // )),
+
                                                 ));
                                             },
                                         );
+                                        index += 1;
                                         current_pos += TASKS_OFFSET;
                                     }
                                 });
@@ -263,6 +274,8 @@ fn track_progress(
     mut commands: Commands,
     mut state_manager: ResMut<NextState<GameState>>,
     mut change_music: EventWriter<ChangeTrackEvent>,
+    mut bubble_q: Query<(&mut Sprite, &BubbleRedraw)>,
+    asset_server: Res<AssetServer>,
 ) {
     //add some text as easter egg, like why are you taking so long to complete the task
     match progress.current_task {
@@ -277,36 +290,54 @@ fn track_progress(
             {
                 progress.current_task = TasksInTutorial::UseZoom;
                 redraw_hint.send(RedrawTextEvent);
+                
+                let (mut sprite,_) = bubble_q.iter_mut().filter(|(_,bubble_n)|{bubble_n.0 == progress.current_task as usize - 1}).next().unwrap();
+                sprite.image = asset_server.load("checkmark_good.png");
             }
         }
         TasksInTutorial::UseZoom => {
             if !ev_mouse_wheel.is_empty() {
                 progress.current_task = TasksInTutorial::OpenBuildMenu;
                 redraw_hint.send(RedrawTextEvent);
+
+                let (mut sprite,_) = bubble_q.iter_mut().filter(|(_,bubble_n)|{bubble_n.0 == progress.current_task as usize - 1}).next().unwrap();
+                sprite.image = asset_server.load("checkmark_good.png");
             }
         }
         TasksInTutorial::OpenBuildMenu => {
             if !redraw_menu.is_empty() {
                 progress.current_task = TasksInTutorial::ProlongTheLine;
                 redraw_hint.send(RedrawTextEvent);
+
+                let (mut sprite,_) = bubble_q.iter_mut().filter(|(_,bubble_n)|{bubble_n.0 == progress.current_task as usize - 1}).next().unwrap();
+                sprite.image = asset_server.load("checkmark_good.png");
             }
         }
         TasksInTutorial::ProlongTheLine => {
             if !prolong_line_ev.is_empty() {
                 progress.current_task = TasksInTutorial::BuildNewLine;
                 redraw_hint.send(RedrawTextEvent);
+            
+                let (mut sprite,_) = bubble_q.iter_mut().filter(|(_,bubble_n)|{bubble_n.0 == progress.current_task as usize - 1}).next().unwrap();
+                sprite.image = asset_server.load("checkmark_good.png");
             }
         }
         TasksInTutorial::BuildNewLine => {
             if !build_line_tutorial_ev.is_empty() {
                 progress.current_task = TasksInTutorial::BuyTrain;
                 redraw_hint.send(RedrawTextEvent);
+
+                let (mut sprite,_) = bubble_q.iter_mut().filter(|(_,bubble_n)|{bubble_n.0 == progress.current_task as usize - 1}).next().unwrap();
+                sprite.image = asset_server.load("checkmark_good.png");
             }
         }
         TasksInTutorial::BuyTrain => {
             if !buy_train_ev.is_empty() {
                 progress.current_task = TasksInTutorial::EndOfTutorial;
                 redraw_hint.send(RedrawTextEvent);
+
+                let (mut sprite,_) = bubble_q.iter_mut().filter(|(_,bubble_n)|{bubble_n.0 == progress.current_task as usize - 1}).next().unwrap();
+                sprite.image = asset_server.load("checkmark_good.png");
             }
         }
         TasksInTutorial::EndOfTutorial => {
@@ -319,7 +350,16 @@ fn track_progress(
                 state_manager.set(GameState::MainMenu);
                 camera_q.get_single_mut().unwrap().translation = Vec3::new(0., 0., 0.);
 
-                change_music.send(ChangeTrackEvent{track: None});
+                change_music.send(ChangeTrackEvent{track: Some(0)});
+                //add delete on smth.
+            }
+        }
+        _ =>{
+            if keyboard.just_pressed(KeyCode::KeyE) {
+                state_manager.set(GameState::MainMenu);
+                camera_q.get_single_mut().unwrap().translation = Vec3::new(0., 0., 0.);
+
+                change_music.send(ChangeTrackEvent{track: Some(0)});
                 //add delete on smth.
             }
         }

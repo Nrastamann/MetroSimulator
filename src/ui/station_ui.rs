@@ -13,7 +13,7 @@ use crate::{
     GameState,
 };
 
-use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR};
+use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR, UI_FONT};
 
 pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
 pub const RMB_BUTTONS: [&str; 2] = ["Новая станция", "Новая линия"];
@@ -32,6 +32,10 @@ const POPUP_AMOUNT_OF_PEOPLE: usize = 2;
 const POPUP_STATION_CAPACITY: usize = 3;
 const POPUP_LINE_HANDLER: usize = 4;
 const POPUP_STATION_BUTTON: usize = 9;
+
+pub const OPACITY_LEVEL_MAIN: f32 = 0.8;
+pub const OPACITY_LEVEL_BLUR: f32 = 0.6;
+pub const OPACITY_LEVEL_HIGHEST: f32 = 0.2;
 
 pub trait UIStyles {
     fn anchor_center(self) -> Self;
@@ -57,7 +61,6 @@ impl UIStyles for UiLayoutTypeWindow {
         self.pos(Rl((x, y)))
     }
 }
-pub const UI_FONT: &str = "fonts/ofont.ru_FreeSet.ttf";
 
 pub struct StationUIPlugin;
 

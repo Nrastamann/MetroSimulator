@@ -5,7 +5,7 @@ use crate::{
 use bevy::prelude::*;
 use bevy_lunex::*;
 
-use super::{UIStyles, UI_FONT};
+use super::{UIStyles, UI_FONT, };
 
 pub struct MoneyUIPlugin;
 
@@ -41,7 +41,7 @@ impl MoneyUi {
                         .rl_pos(80., 95.)
                         .pack(),
                     Sprite::default(),
-                    UiColor::from(Color::WHITE),
+                    UiColor::from(Color::srgba(1.,1.,1.,0.5)),
                 ))
                 .with_children(|ui| {
                     ui.spawn((

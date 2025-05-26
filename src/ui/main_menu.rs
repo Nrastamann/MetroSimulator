@@ -2,7 +2,7 @@ use crate::{audio::ChangeTrackEvent, GameState};
 use bevy::prelude::*;
 use bevy_lunex::*;
 
-use super::TutorialSpawnEvent;
+use super::{TutorialSpawnEvent};
 pub struct MainMenuPlugin;
 
 impl Plugin for MainMenuPlugin {
@@ -18,11 +18,15 @@ fn despawn_scene_with<S: Component>(mut commands: Commands, query: Query<Entity,
         commands.entity(entity).despawn_recursive();
     }
 }
-pub const METRO_BLUE_COLOR: Color = Color::srgb(0.09, 0.337, 0.635);
+//2b5797
+pub const METRO_BLUE_COLOR: Color = Color::srgb(0x45 as f32 /255., 0x79 as f32 /255., 0xAE as f32 /255.);
 pub const METRO_LIGHT_BLUE_COLOR: Color = Color::srgb(0x29 as f32 / 255., 0x9b as f32 / 255., 0xe2 as f32 / 255.);
 pub const BUTTON_SIZE: f32 = 14.0;
 pub const BUTTON_GAP: f32 = 11.0;
 pub const MAIN_MENU_BUTTONS: [&str; 4] = ["Новая игра","Обучение","Настройки", "Выйти"];
+
+pub const UI_FONT: &str = "fonts/FiraSans-Medium.ttf";
+pub const UI_MENU_FONT: &str = "fonts/metromodern.ttf";
 
 pub enum MainMenuStates {
     NewGame = 0,
@@ -82,7 +86,7 @@ impl MainMenuScene {
                                     UiTextSize::from(Rh(60.)),
                                     Text2d::new("P.O.D.Z.E.M.K.A"),
                                     TextFont{
-                                        font:asset_server.load("fonts/Metro.ttf"),
+                                        font:asset_server.load(UI_MENU_FONT),
                                         font_size: 64.,
                                         ..default()
                                     },
@@ -138,7 +142,7 @@ impl MainMenuScene {
                                                 Text2d::new(button),
                                                 //text animator, maybe need to steal some crates)0000000000000
                                                 TextFont{
-                                                    font:asset_server.load("fonts/ofont.ru_FreeSet.ttf"),
+                                                    font:asset_server.load(UI_MENU_FONT),
                                                     font_size: 64.,
                                                     ..default()
                                                 },
