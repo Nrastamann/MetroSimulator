@@ -60,6 +60,12 @@ pub struct Station {
     pub position: (i32, i32),
 }
 
+impl std::fmt::Display for Station {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        write!(f, "Station({},{})", self.position.0, self.position.1)
+    }
+}
+
 impl Station {
     pub fn new(position: (i32, i32)) -> Self {
         Self { position }

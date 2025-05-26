@@ -1,4 +1,4 @@
-use std::time::Duration;
+use std::{collections::VecDeque, time::Duration};
 
 use bevy::{prelude::*, time::common_conditions::on_timer, utils::HashMap};
 
@@ -28,6 +28,7 @@ impl Plugin for PassengerPlugin {
             )
                 .run_if(in_state(GameState::InGame)),
         );
+        app.add_systems(Update, monitor_first_guy.run_if(on_timer(Duration::from_secs(5))));
     }
 }
 
@@ -38,12 +39,24 @@ pub enum PassengerDesire {
     Entertainment,
 }
 
+impl std::fmt::Display for PassengerDesire {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        let word = match self {
+            PassengerDesire::Home => "home",
+            PassengerDesire::Work => "work",
+            PassengerDesire::Entertainment => "fun",
+        };
+
+        write!(f, "{word}")
+    }
+}
+
 #[derive(Clone, PartialEq)]
 pub struct Passenger {
     pub current_desire: PassengerDesire,
     pub last_visited_district: usize,
     pub district_ids: [usize; 3],
-    pub destination_station: Option<Station>,
+    pub route: Vec<Station>,
 }
 
 #[derive(Resource, Default)]
@@ -64,7 +77,7 @@ fn add_passengers(
             current_desire: PassengerDesire::Home,
             last_visited_district: ev.district_id,
             district_ids: [ev.district_id, 0, 0], // домашний район - район, в котором он создался
-            destination_station: None,
+            route: vec![],
         };
         let passenger_id = database.0.len();
         district_map.districts[ev.district_id]
@@ -119,7 +132,7 @@ fn decide_where_to_go(
     for (_, passenger) in database.0.iter_mut() {
         // println!("{:?}", passenger.district_ids);
 
-        if passenger.destination_station.is_some()
+        if passenger.route.len() != 0
             || passenger.district_ids[1] == 0
             || passenger.district_ids[2] == 0
         {
@@ -165,7 +178,7 @@ fn decide_where_to_go(
                         continue;
                     }
 
-                    passenger.destination_station = Some(*station);
+                    passenger.route.push(*station);
                     break;
                 }
             }
@@ -174,9 +187,9 @@ fn decide_where_to_go(
 }
 
 fn start_moving(
-    database: Res<PassengerDatabase>,
+    mut database: ResMut<PassengerDatabase>,
     mut district_map: ResMut<DistrictMap>,
-    mut metro: ResMut<Metro>,
+    metro: ResMut<Metro>,
     mut q_station_button: Query<(&mut StationButton, &Station)>,
 ) {
     for district in district_map
@@ -186,51 +199,117 @@ fn start_moving(
     {
         for id in district.passenger_ids.clone().iter() {
             let passenger = database.0.get(id).unwrap();
-            if passenger.destination_station.is_none() {
+            if passenger.route.len() == 0 {
                 continue;
             }
 
-            let mut stations = vec![];
-            for line in metro.lines.iter_mut() {
-                stations.append(&mut line.stations.iter().collect::<Vec<&Station>>());
+            let mut starting_line = None;
+            let mut starting_station = None;
+            let destination_station = database.0.get(id).unwrap().route[0];
+
+            // WTF IS THIS SHIT
+            let mut destination_line = None;
+            for line in metro.lines.iter() {
+                if line.stations.contains(&destination_station) {
+                    destination_line = Some(line.id);
+                }
+            }
+            if destination_line.is_none() {
+                continue;
             }
 
-            'outer: for station in stations.iter() {
-                for cell in district.cells.iter() {
-                    let cell_position =
-                        Vec2::new(cell.0 as f32, cell.1 as f32) * DISTRICT_CELL_SIZE;
-                    let station_position =
-                        Vec2::new(station.position.0 as f32, station.position.1 as f32);
-                    let distance = cell_position.distance(station_position);
+            'line_loop: for line in metro.lines.iter() {
+                for station in line.stations.iter() {
+                    for cell in district.cells.iter() {
+                        let cell_position =
+                            Vec2::new(cell.0 as f32, cell.1 as f32) * DISTRICT_CELL_SIZE;
+                        let station_position =
+                            Vec2::new(station.position.0 as f32, station.position.1 as f32);
+                        let distance = cell_position.distance(station_position);
 
-                    if distance > DISTRICT_CELL_SIZE / 2. {
-                        continue;
+                        if distance > DISTRICT_CELL_SIZE / 2. {
+                            continue;
+                        }
+
+                        let Some((mut station_button, _)) = q_station_button
+                            .iter_mut()
+                            .filter(|(_, &st)| station.position == st.position)
+                            .next()
+                        else {
+                            continue;
+                        };
+
+                        if station_button.passenger_ids.len() >= 12 {
+                            continue;
+                        }
+
+                        station_button.passenger_ids.push(*id);
+
+                        let Some(remove_index) = district
+                            .passenger_ids
+                            .iter()
+                            .position(|pass_id| *pass_id == *id)
+                        else {
+                            continue;
+                        };
+
+                        district.passenger_ids.remove(remove_index);
+
+                        starting_line = Some(line.id);
+                        starting_station = Some(station);
+
+                        break 'line_loop;
                     }
+                }
+            }
 
-                    let Some((mut station_button, _)) = q_station_button
-                        .iter_mut()
-                        .filter(|(_, &st)| station.position == st.position)
-                        .next()
-                    else {
-                        continue;
-                    };
+            if starting_line.is_none() {
+                continue;
+            }
 
-                    if station_button.passenger_ids.len() >= 12 {
-                        continue;
+            let mut queue = VecDeque::new();
+            queue.push_back(starting_line.unwrap());
+
+            let mut visited = HashMap::new();
+
+            let mut last_station = starting_station.unwrap();
+
+            while let Some(line_id) = queue.pop_front() {
+                if line_id == destination_line.unwrap() {
+                    let mut path = vec![destination_station];
+                    let mut current = *starting_station.unwrap();
+                    while let Some(&Some(prev)) = visited.get(&current.position) {
+                        path.push(prev);
+                        current = prev.clone();
                     }
+                    path.reverse();
+                    database.0.get_mut(id).unwrap().route = path;
+                    break; // success
+                }
 
-                    station_button.passenger_ids.push(*id);
+                // WHAT THE FUCK
+                // WHO WROTE THIS SHIT
+                // OH IT WAS ME
+                // NEVERMIND
+                // I HATE MY PAST SELF
 
-                    let Some(remove_index) = district
-                        .passenger_ids
-                        .iter()
-                        .position(|pass_id| *pass_id == *id)
-                    else {
-                        continue;
-                    };
+                for line in metro
+                    .lines
+                    .iter()
+                    .filter(|&current| *current != metro.lines[line_id])
+                {
+                    for station in line.stations.iter() {
+                        if metro.lines[line_id].stations.contains(station) {
+                            if visited.contains_key(&station.position) {
+                                continue;
+                            }
 
-                    district.passenger_ids.remove(remove_index);
-                    break 'outer;
+                            queue.push_back(line.id);
+                            visited.insert(station.position, Some(*last_station));
+                            last_station = station;
+                            continue;
+                        }
+                    }
                 }
             }
         }
@@ -258,7 +337,7 @@ fn stop_moving(
                     continue;
                 };
 
-                if passenger.destination_station.is_some() {
+                if passenger.route.len() != 0 {
                     continue;
                 }
 
@@ -277,4 +356,12 @@ fn stop_moving(
             }
         }
     }
+}
+
+fn monitor_first_guy(database: Res<PassengerDatabase>) {
+    let Some(passenger) = database.0.get(&0) else {
+        return;
+    };
+
+    info!("want to go to: {}\t route length: {}\n", passenger.current_desire, passenger.route.len());
 }

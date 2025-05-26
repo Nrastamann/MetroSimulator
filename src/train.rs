@@ -131,13 +131,10 @@ fn offload_passengers(
     let mut offloading_passengers = vec![];
     for id in train.passenger_ids.iter() {
         let passenger = passenger_database.0.get_mut(id).unwrap();
-        if passenger
-            .destination_station
-            .is_some_and(|st| st.position == station.position)
-        {
+        if passenger.route[0].position == station.position {
             offloading_passengers.push(*id);
         }
-        passenger.destination_station = None;
+        passenger.route.pop();
     }
 
     train.passenger_ids = train
