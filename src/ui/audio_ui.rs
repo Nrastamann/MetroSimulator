@@ -44,8 +44,16 @@ impl Plugin for AudioUIPlugin {
 }
 #[derive(Event)]
 pub struct RedrawTracksEvent{
-    from_player: bool
+    redraw_type: RedrawType,
 }
+
+#[derive(PartialEq)]
+pub enum RedrawType{
+    ChangePage,
+    Redraw,
+    ChangePicked(usize),
+}
+
 #[derive(Component)]
 pub struct PlayerUI;
 
@@ -60,6 +68,9 @@ pub struct PageNumber(pub usize);
 
 #[derive(Component, Default)]
 pub struct PlayerButton(pub usize);
+
+#[derive(Component)]
+pub struct CurrentTrack;
 
 #[derive(Event)]
 pub struct HideUIEvent;
@@ -129,7 +140,8 @@ impl PlayerUI {
                                         UiLayoutTypeWindow::new().anchor_center().pack(),
                                         UiColor::from(Color::BLACK.with_alpha(0.95)),
                                         UiTextSize::from(Rh(100.)),
-                                        Text2d::new(MUSIC_NAMES[0].to_string()),
+                                        CurrentTrack,
+                                        Text2d::new(MUSIC_NAMES[0][..MUSIC_NAMES[0].len()-4].to_string()),
                                         TextFont {
                                             font: asset_server.load(UI_FONT),
                                             font_size: 96.,
@@ -300,7 +312,20 @@ impl PlayerUI {
                                        },
                                        PickingBehavior::IGNORE,
                                     ));
-                                }).id());
+                                }).observe(|click:Trigger<Pointer<Click>>,mut music_player: ResMut<MusicPlayer>,mut redraw_tracks_ev: EventWriter<RedrawTracksEvent> ,page_q: Query<&PageNumber>,mut change_track: EventWriter<ChangeTrackEvent>, player_entities: ResMut<PlayerEntities>|{
+                                    for i in 0..player_entities.entities_tracks.len(){
+                                        if player_entities.entities_tracks[i] == click.target{
+                                            if i + (page_q.get_single().unwrap().0 - 1) * 5 >= MUSIC_NAMES.len(){
+                                                return;
+                                            }
+                                            change_track.send(ChangeTrackEvent{track: Some((page_q.get_single().unwrap().0 - 1) * 5 + i)});
+                                            redraw_tracks_ev.send(RedrawTracksEvent{redraw_type: RedrawType::ChangePicked(i)});                                                    
+                                            break;
+                                        }
+                                    }
+                               
+                                }
+                            ).id());
                             offset+=20.;
                             }
                             });
@@ -380,7 +405,7 @@ impl PlayerUI {
                                                         }
                                                     }
                                                     text.0 = page.0.to_string();
-                                                    redraw_tracks_ev.send(RedrawTracksEvent{from_player: true});                                                    
+                                                    redraw_tracks_ev.send(RedrawTracksEvent{redraw_type: RedrawType::ChangePage});                                                    
                                             });
                                     }
                                     }); 
@@ -397,10 +422,65 @@ impl PlayerUI {
 
 fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>, 
     mut player_buttons: Query<(&Arrow, &mut Visibility)>,
-    mut pages_q: Query<&mut PageNumber>,){
+    mut pages_q: Query<(&mut Text2d,&mut PageNumber), Without<CurrentTrack>>,
+    music_player: Res<MusicPlayer>,
+    player_enitites: Res<PlayerEntities>,
+    mut tracks_holders_q: Query<(&mut UiColor, &Children), (With<UiLayout>, Without<Text2d>,Without<CurrentTrack>,Without<PageNumber>)>,
+    mut track_names_q: Query<(&mut UiColor, &mut Text2d),(Without<PageNumber>,Without<CurrentTrack>)>,
+    mut name_tag_q: Query<&mut Text2d,(With<CurrentTrack>,Without<Children>,Without<UiLayoutRoot>,)>,
+){
     for ev in redraw_tracks_ev.read(){
-        let page_count = pages_q.get_single().unwrap();
+        let (mut text_page,mut page_count) = pages_q.get_single_mut().unwrap();
+        
+        if ev.redraw_type == RedrawType::Redraw{
+            page_count.0 = music_player.current_composition / 5 + 1;            
+            text_page.0 = page_count.0.to_string(); 
+        }
+        
+        let mut counter = (page_count.0 - 1) * 5;
+        for track_e in player_enitites.entities_tracks.iter(){
+            let (mut track_handler_color, kids) = tracks_holders_q.get_mut(*track_e).unwrap(); 
+            *track_handler_color = UiColor::from(Color::srgba(255., 255., 255., 0.2));
+            for kid in kids.iter(){
+                let (mut color,mut text) = track_names_q.get_mut(*kid).unwrap();
+                
+                if counter >= MUSIC_NAMES.len(){
+                    text.0 = "".to_string();
+                    break;
+                }
+                
+                *color = UiColor::from(Color::BLACK);
+                text.0 = MUSIC_NAMES[counter][..MUSIC_NAMES[counter].len()-4].to_string();
+            }
+            counter += 1;
+        }
 
+        let picked_track;
+
+        match ev.redraw_type{
+            RedrawType::ChangePicked(value) =>{
+                picked_track = value;
+                //накинуть на value, эффект выбранного
+            }
+            _ =>{
+                if music_player.current_composition / 5 == page_count.0 - 1{
+                    picked_track = music_player.current_composition % 5;
+                }else{
+                picked_track = usize::MAX;
+                }
+            }
+        } 
+        name_tag_q.get_single_mut().unwrap().0 = MUSIC_NAMES[music_player.current_composition][..MUSIC_NAMES[music_player.current_composition].len()-4].to_string();
+
+        if picked_track != usize::MAX{
+            name_tag_q.get_single_mut().unwrap().0 = MUSIC_NAMES[picked_track + (page_count.0 - 1) * 5][..MUSIC_NAMES[picked_track + (page_count.0 - 1) * 5].len()-4].to_string();
+
+            let (mut track_handler_color, kids) = tracks_holders_q.get_mut(player_enitites.entities_tracks[picked_track]).unwrap(); 
+            *track_handler_color = UiColor::from(Color::srgba(0xd3 as f32 /255., 0xd3 as f32 /255., 0xd3 as f32 /255., 0.8));
+            for _kid in kids.iter(){
+//                let (mut color,mut text) = track_names_q.get_mut(*kid).unwrap();
+            }
+        }
         for (arrow, mut visibility) in player_buttons.iter_mut(){
             if arrow.0 == ComponentOrientation::Left && page_count.0 > 1   {
                 *visibility = Visibility::Visible; 
@@ -410,15 +490,6 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
             if arrow.0 == ComponentOrientation::Right && page_count.0 * 5 < MUSIC_NAMES.len() {
                 *visibility = Visibility::Visible; 
                 continue;
-            }
-            print!("{}",page_count.0);
-        }
-        match ev.from_player{
-            true =>{
-
-            }
-            _ =>{
-
             }
         }
     }
@@ -449,7 +520,7 @@ fn show_player(
         let mut player_v = player_q.get_single_mut().unwrap();
 
         *player_v = Visibility::Visible;
-        redraw_tracks_ev.send(RedrawTracksEvent { from_player: false });
+        redraw_tracks_ev.send(RedrawTracksEvent { redraw_type: RedrawType::Redraw });
     }
 }
 

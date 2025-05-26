@@ -153,13 +153,13 @@ impl MainMenuScene {
                                         "Новая игра" => {
                                             button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>,mut change_music: EventWriter<ChangeTrackEvent>|{
                                                 swap_state.send( SwapStatesEvent { move_to_where: MainMenuStates::NewGame });                                                       
-                                                change_music.send(ChangeTrackEvent);
+                                                change_music.send(ChangeTrackEvent{track: None});
                                             });
                                         }
                                         "Обучение" => {
                                             button_entity.observe(|_:Trigger<Pointer<Click>>,mut swap_state: EventWriter<SwapStatesEvent>,mut change_music: EventWriter<ChangeTrackEvent>|{
                                                 swap_state.send( SwapStatesEvent { move_to_where: MainMenuStates::Tutorial });       
-                                                change_music.send(ChangeTrackEvent);
+                                                change_music.send(ChangeTrackEvent{track: None});
                                             });
                                         }
                                         "Настройки" => {
