@@ -3,14 +3,7 @@ use bevy::prelude::*;
 use bevy_lunex::*;
 //ADD REDRAW EVENT HANDLER, ADD SUPPORT TO NOT RE-CHANGE ALL TEXTs
 use crate::{
-    camera::MainCamera,
-    cursor::CursorPosition,
-    line::MetroLine,
-    metro::{Direction, Metro},
-    station::{StartBuildingEvent, Station, StationButton},
-    station_blueprint::SetBlueprintColorEvent,
-    train::SpawnTrainEvent,
-    GameState,
+    camera::MainCamera, cursor::CursorPosition, line::MetroLine, metro::{Direction, Metro}, money::{Money, TRAIN_COST}, station::{StartBuildingEvent, Station, StationButton}, station_blueprint::SetBlueprintColorEvent, train::SpawnTrainEvent, ui::MoneyRedrawEvent, GameState
 };
 
 use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR, UI_FONT};
@@ -403,12 +396,16 @@ impl PopupMenu {
                             })
                             .observe(hover_set::<Pointer<Over>, true>)
                             .observe(hover_set::<Pointer<Out>, false>)
-                            .observe(|_: Trigger<Pointer<Click>>,mut buy_train: EventWriter<SpawnTrainEvent>, mut buy_train_t: EventWriter<BuyTrainTutorial>,popup_q: Query<&PopupMenu, With<UiLayoutRoot>>| {
+                            .observe(|_: Trigger<Pointer<Click>>,mut money: ResMut<Money>, mut change_money_ui: EventWriter<MoneyRedrawEvent>, mut buy_train: EventWriter<SpawnTrainEvent>, mut buy_train_t: EventWriter<BuyTrainTutorial>,popup_q: Query<&PopupMenu, With<UiLayoutRoot>>| {
                                 let popup = popup_q.get_single().unwrap();
                                 buy_train.send(SpawnTrainEvent{
                                     line: popup.picked_line,
                                     station: popup.station,
                                 });
+
+                                money.0 -= TRAIN_COST;
+                                change_money_ui.send(MoneyRedrawEvent);
+                        
                                 println!("BOUGHT A TRAIN");
                                 buy_train_t.send(BuyTrainTutorial);
                             });
