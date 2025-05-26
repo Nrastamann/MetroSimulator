@@ -125,8 +125,9 @@ impl MainMenuScene {
                                                 (UiHover::id(), METRO_BLUE_COLOR)
                                             ]),
                                             Sprite{
-                                                image: asset_server.load("button.png"),
-                                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(32.0), ..default()}),
+                                                image: asset_server.load("button_symetric_sliced.png"),
+                        // Here we enable sprite slicing
+                                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(32.0), ..default() }),
                                                 ..default() 
                                             },
                                             PickingBehavior::IGNORE,
