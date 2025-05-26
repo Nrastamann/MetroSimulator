@@ -319,7 +319,7 @@ fn track_progress(
                 state_manager.set(GameState::MainMenu);
                 camera_q.get_single_mut().unwrap().translation = Vec3::new(0., 0., 0.);
 
-                change_music.send(ChangeTrackEvent);
+                change_music.send(ChangeTrackEvent{track: None});
                 //add delete on smth.
             }
         }

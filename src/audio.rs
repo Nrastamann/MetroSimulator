@@ -119,7 +119,9 @@ struct FadeIn(pub f32);
 struct FadeOut(pub f32);
 
 #[derive(Event)]
-pub struct ChangeTrackEvent;
+pub struct ChangeTrackEvent {
+    pub track: Option<usize>,
+}
 
 #[derive(Event)]
 struct PlayMetroSFXEvent;
@@ -292,7 +294,7 @@ fn empty_track(
 ) {
     if player.current_state == PlayerState::Playing && soundtrack.iter().len() == 0 {
         print!("why?");
-        change_track.send(ChangeTrackEvent);
+        change_track.send(ChangeTrackEvent { track: None });
         player.current_state = PlayerState::Ended;
     }
 }
@@ -367,7 +369,26 @@ fn change_track(
     game_state: Res<State<GameState>>,
     mut music_player: ResMut<MusicPlayer>,
 ) {
-    for _ev in change_track_ev.read() {
+    for ev in change_track_ev.read() {        
+        if ev.track.is_some(){
+            for music in soundtrack.iter(){
+                commands.entity(music).despawn();
+            }
+            music_player.current_composition = ev.track.unwrap();
+            commands.spawn((
+                AudioPlayer::new(
+                    music_player.track_list[music_player.order[ev.track.unwrap()]].clone(),
+                ),
+                Soundtrack,
+                PlaybackSettings {
+                    mode: bevy::audio::PlaybackMode::Despawn,
+                    volume: Volume::new(1.),
+                    ..default()
+                },
+            ));
+            return;
+        } 
+        
         for music in soundtrack.iter() {
             commands.entity(music).insert(FadeOut(0.0));
             println!("fade");
