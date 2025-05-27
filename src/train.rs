@@ -131,7 +131,8 @@ fn offload_passengers(
     let mut offloading_passengers = vec![];
     for id in train.passenger_ids.iter() {
         let passenger = passenger_database.0.get_mut(id).unwrap();
-        if passenger.route[0].position == station.position {
+
+        if passenger.route.len() <= 0 || passenger.route[0].position == station.position {
             offloading_passengers.push(*id);
         }
         passenger.route.pop();
@@ -159,10 +160,24 @@ fn load_passengers(
     station_button: &mut StationButton,
     train: &mut Train,
     offloaded_passengers: &mut Vec<usize>,
+    pass_database: &ResMut<PassengerDatabase>,
+    metro: &Res<Metro>,
 ) {
     while train.passenger_ids.len() < TRAIN_MAX_PASSENGERS && station_button.passenger_ids.len() > 0
     {
-        let loading_passenger = station_button.passenger_ids.pop().unwrap();
+        let loading_passenger = station_button.passenger_ids[0];
+        let Some(passenger) = pass_database.0.get(&loading_passenger) else {
+            continue;
+        };
+
+        if !metro.lines[train.line]
+            .stations
+            .contains(&passenger.route[0])
+        {
+            continue;
+        }
+
+        station_button.passenger_ids.pop();
         train.passenger_ids.push(loading_passenger);
     }
 
@@ -220,7 +235,13 @@ fn move_train(
             redraw_money.send(MoneyRedrawEvent);
             // println!("денге: {}", money.0);
 
-            load_passengers(&mut btn, &mut train, &mut offloaded_passengers);
+            load_passengers(
+                &mut btn,
+                &mut train,
+                &mut offloaded_passengers,
+                &passenger_database,
+                &metro,
+            );
 
             train.last_stop_time = time.elapsed();
 
