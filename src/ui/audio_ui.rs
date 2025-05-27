@@ -9,8 +9,10 @@ use crate::{
 };
 pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Мут"];
 pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
-pub const SMALL_PLAYER_SIZE: f32 = 10.;
-use super::{ UIStyles, METRO_BLUE_COLOR, OPACITY_LEVEL_BLUR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
+pub const PLAYER_TOP_BUTTONS: [&str; 3] = ["Влево", "Пауза", "Вправо"];
+pub const SMALL_PLAYER_SIZE: f32 = 20.;
+use super::{
+    LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_BLUE_COLOR, METRO_LIGHT_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
 };
 
 pub struct AudioUIPlugin;
@@ -21,10 +23,12 @@ impl Plugin for AudioUIPlugin {
             .add_event::<HideUIEvent>()
             .add_event::<ShowUIEvent>()
             .add_event::<ChangeSongNameEvent>()
+            .add_event::<ChangeSongNameEvent>()
             .add_event::<PlayerUISpawnEvent>()
             .add_event::<RedrawTracksEvent>();
         app.add_systems(
             Update,
+            (show_player, hide_player, redraw_tracks, hotkey_player,change_song_mini_player).run_if(in_state(GameState::InGame)),
             (show_player, hide_player, redraw_tracks, hotkey_player,change_song_mini_player).run_if(in_state(GameState::InGame)),
         );
         app.add_systems(OnEnter(GameState::InGame), PlayerUI::spawn);
@@ -70,6 +74,9 @@ pub struct PlayerEntities {
 pub struct PlayerType(usize);
 
 #[derive(Component)]
+pub struct PlayerType(usize);
+
+#[derive(Component)]
 pub struct PageNumber(pub usize);
 
 #[derive(Component, Default)]
@@ -77,6 +84,9 @@ pub struct PlayerButton(pub usize);
 
 #[derive(Component)]
 pub struct CurrentTrack;
+
+#[derive(Component)]
+pub struct CurrentTrackSmall;
 
 #[derive(Component)]
 pub struct CurrentTrackSmall;
@@ -90,6 +100,9 @@ pub struct ShowUIEvent;
 #[derive(Event)]
 pub struct ChangeSongNameEvent;
 
+#[derive(Event)]
+pub struct ChangeSongNameEvent;
+
 #[derive(Clone,Copy, PartialEq)]
 pub enum ComponentOrientation{
     Left,
@@ -98,8 +111,13 @@ pub enum ComponentOrientation{
 #[derive(Component,Clone,Copy)]
 pub struct MiniButtons(usize);
 
+#[derive(Component,Clone,Copy)]
+pub struct MiniButtons(usize);
+
 #[derive(Component, Clone, Copy)]
 pub struct Arrow(pub ComponentOrientation);
+
+pub const MINIPLAYER_OFFSET: f32 = 30.;
 
 pub const MINIPLAYER_OFFSET: f32 = 30.;
 
@@ -109,6 +127,7 @@ impl PlayerUI {
     fn spawn(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
+        music_player: Res<MusicPlayer>,
         music_player: Res<MusicPlayer>,
         mut player_entities: ResMut<PlayerEntities>,
     ) {
@@ -128,13 +147,8 @@ impl PlayerUI {
                             Visibility::Visible,
                             PlayerType(0),
                             UiLayoutTypeWindow::new().anchor_left().rl_size(SMALL_PLAYER_SIZE, SMALL_PLAYER_SIZE /2.).rl_pos(50. - SMALL_PLAYER_SIZE / 2.,0.).pack(),
-                            Sprite{
-                                image: asset_server.load("button_symetric_sliced.png"),
-                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
-//                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
-        // Here we enable sprite slicing
-                                ..default() 
-                            },
+                            Sprite::default(),
+                            UiColor::from(METRO_BLUE_COLOR),//kokok
                         )).with_children(|ui|{
                             let mut current_offset = 0.;
                             for i in 0..3{
@@ -144,7 +158,7 @@ impl PlayerUI {
                                 }
                             ui.spawn((
                                 Name::new("Button".to_string()+&i.to_string()),
-                                UiLayoutTypeWindow::new().anchor_left().rl_pos(current_offset, 0.).rl_size(MINIPLAYER_OFFSET+additional_size ,90.).pack(),
+                                UiLayoutTypeWindow::new().anchor_left().rl_pos(current_offset, 0.).rl_size(MINIPLAYER_OFFSET+additional_size,100.).pack(),
                             )).with_children(|ui|{
                                 let sprite;
                                 let button_type;
@@ -187,11 +201,11 @@ impl PlayerUI {
                                     ui.spawn((
                                         Name::new("Buttons"),
                                         UiColor::from(Color::BLACK),
-                                        UiLayoutTypeWindow::new().anchor_center().rl_size(50.,50.).pack(),
+                                        UiLayoutTypeWindow::new().full().pack(),
                                         sprite,
                                         MiniButtons(button_type),
 
-                                    )).observe(|click: Trigger<Pointer<Click>>, mini_buttons_q:Query<&MiniButtons>, mut change_track: EventWriter<ChangeTrackEvent> |{
+                                    )).observe(|click: Trigger<Pointer<Click>>, mini_buttons_q:Query<&MiniButtons>,music_player: Res<MusicPlayer>, mut change_track: EventWriter<ChangeTrackEvent> |{
                                         match mini_buttons_q.get(click.target).unwrap().0{
                                             0 => {
                                                 change_track.send(ChangeTrackEvent { track: Some(usize::MAX) });
@@ -225,6 +239,8 @@ impl PlayerUI {
                                 .pack(),
                             UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_BLUR)),
                             Sprite::default(),
+                            PlayerType(1),
+                            Visibility::Hidden,
                             PlayerType(1),
                             Visibility::Hidden,
                         ))
@@ -553,6 +569,11 @@ fn change_song_mini_player(mut change_song_name_ev: EventReader<ChangeSongNameEv
         name_q.get_single_mut().unwrap().0 = MUSIC_NAMES[music_player.current_composition][..MUSIC_NAMES[music_player.current_composition].len()-4].to_string();
     }
 }
+fn change_song_mini_player(mut change_song_name_ev: EventReader<ChangeSongNameEvent>, music_player: Res<MusicPlayer>, mut name_q: Query<&mut Text2d, With<CurrentTrackSmall>>){
+    for _ in change_song_name_ev.read(){
+        name_q.get_single_mut().unwrap().0 = MUSIC_NAMES[music_player.current_composition][..MUSIC_NAMES[music_player.current_composition].len()-4].to_string();
+    }
+}
 fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>, 
     mut player_buttons: Query<(&Arrow, &mut Visibility),Without<PlayerType>>,
     mut pages_q: Query<(&mut Text2d,&mut PageNumber), (Without<CurrentTrack>,Without<PlayerType>)>,
@@ -634,10 +655,19 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
 
 fn hide_player(
     mut player_q: Query<(&mut Visibility, &PlayerType), Without<Arrow>>,
+    mut player_q: Query<(&mut Visibility, &PlayerType), Without<Arrow>>,
     mut hide_ui_ev: EventReader<HideUIEvent>,
     mut buttons_q: Query<&mut Visibility, (With<Arrow>,Without<UiLayoutRoot>)>,
 ) {
     for _ev in hide_ui_ev.read() {
+        for (mut player_v,_) in player_q.iter_mut(){
+            if *player_v == Visibility::Hidden{
+                *player_v = Visibility::Visible;
+                continue;
+            }
+            *player_v = Visibility::Hidden;
+        }
+        
         for (mut player_v,_) in player_q.iter_mut(){
             if *player_v == Visibility::Hidden{
                 *player_v = Visibility::Visible;
@@ -654,11 +684,25 @@ fn hide_player(
 
 fn show_player(
     mut player_q: Query<&mut Visibility, (With<PlayerType>, Without<Arrow>)>,
+    mut player_q: Query<&mut Visibility, (With<PlayerType>, Without<Arrow>)>,
     mut show_ui_ev: EventReader<ShowUIEvent>,
     mut redraw_tracks_ev: EventWriter<RedrawTracksEvent>, 
     mut buttons_q: Query<&mut Visibility, (With<Arrow>,Without<UiLayoutRoot>, Without<PlayerType>)>,
+    mut buttons_q: Query<&mut Visibility, (With<Arrow>,Without<UiLayoutRoot>, Without<PlayerType>)>,
 ) {
     for _ev in show_ui_ev.read() {
+        for mut player_v in player_q.iter_mut(){
+            if *player_v == Visibility::Hidden{
+                *player_v = Visibility::Visible;
+                continue;
+            }
+            *player_v = Visibility::Hidden;
+        }
+        
+        for mut button in buttons_q.iter_mut(){
+            *button = Visibility::Hidden;
+        }
+
         for mut player_v in player_q.iter_mut(){
             if *player_v == Visibility::Hidden{
                 *player_v = Visibility::Visible;
