@@ -272,7 +272,7 @@ fn start_moving(
 
             let mut visited = HashMap::new();
 
-            let mut last_station = starting_station.unwrap();
+            let mut last_station = destination_station;
 
             while let Some(line_id) = queue.pop_front() {
                 if line_id == destination_line.unwrap() {
@@ -305,8 +305,8 @@ fn start_moving(
                             }
 
                             queue.push_back(line.id);
-                            visited.insert(station.position, Some(*last_station));
-                            last_station = station;
+                            visited.insert(station.position, Some(last_station));
+                            last_station = *station;
                             continue;
                         }
                     }
