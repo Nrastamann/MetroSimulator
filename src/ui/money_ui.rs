@@ -5,7 +5,7 @@ use crate::{
 use bevy::prelude::*;
 use bevy_lunex::*;
 
-use super::{UIStyles, UI_FONT, };
+use super::{UIStyles, UI_FONT};
 
 pub struct MoneyUIPlugin;
 
@@ -40,12 +40,19 @@ impl MoneyUi {
                         .rl_size(20., 5.)
                         .rl_pos(80., 95.)
                         .pack(),
-                    Sprite::default(),
-                    UiColor::from(Color::srgba(1.,1.,1.,0.5)),
+                    Sprite {
+                        image: asset_server.load("button_sliced_top_left.png"),
+                        image_mode: SpriteImageMode::Sliced(TextureSlicer {
+                            border: BorderRect::square(32.0),
+                            ..default()
+                        }),
+                        ..Default::default()
+                    },
+                    UiColor::from(Color::srgba(1., 1., 1., 0.5)),
                 ))
                 .with_children(|ui| {
                     ui.spawn((
-                        UiLayout::window().anchor_left().pack(),
+                        UiLayout::window().anchor_center().pack(),
                         UiColor::from(Color::BLACK.with_alpha(0.95)),
                         UiTextSize::from(Rh(100.)),
                         Text2d::new(money.0.to_string()),
@@ -63,7 +70,7 @@ impl MoneyUi {
                 });
             });
     }
-//разбить одну линию на две, + добавлять новые на основе существующих
+    //разбить одну линию на две, + добавлять новые на основе существующих
     fn update(
         mut ev_redraw: EventReader<MoneyRedrawEvent>,
         money_res: Res<Money>,
