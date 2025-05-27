@@ -222,7 +222,7 @@ fn draw_district_cells (
         for cell in district.cells.iter()
         .filter(|&cell| !spawned_cells.contains(cell)) {
             let mesh = meshes.add(Rectangle::new(DISTRICT_CELL_SIZE, DISTRICT_CELL_SIZE));
-            let material = materials.add(district.district_type.color().with_alpha(0.5));
+            let material = materials.add(district.district_type.color().with_alpha(0.25));
 
             commands.spawn((
                 StateScoped(GameState::InGame),
