@@ -9,6 +9,7 @@ use crate::{
 use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR, UI_FONT};
 
 pub const RMB_STATS: [&str; 2] = ["Поезда", "Люди на станции"];
+pub const RMB_STATS: [&str; 2] = ["Поезда", "Люди на станции"];
 pub const RMB_BUTTONS: [&str; 2] = ["Новая станция", "Новая линия"];
 
 pub const POPUP_WIDTH: f32 = 464.;
@@ -145,9 +146,9 @@ impl PopupMenu {
                     UiLayout::window().rl_size(100., 100.).pack(),
                     Sprite{image: asset_server.load(
                         "button_symetric_sliced.png",
+                        
                     ),
-                    color: METRO_LIGHT_BLUE_COLOR,//.with_alpha(OPACITY_LEVEL_HIGHEST),
-                    image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(32.0), ..default() }), 
+                    image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }), 
                     ..default()},
                 ))
                 .with_children(|ui| {
@@ -162,6 +163,8 @@ impl PopupMenu {
                             .y(Rl(BORDER_WIDTH / POPUP_HEIGHT))
                             .x(Rl(BORDER_WIDTH / POPUP_WIDTH))
                             .pack(),
+                        Sprite::default(),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         popup_textboxes.entities.push(
@@ -198,8 +201,8 @@ impl PopupMenu {
                                 80. - 2. * BORDER_WIDTH / POPUP_HEIGHT,
                             )))
                             .pack(),
-//                        Sprite::default(),
-//                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+                        Sprite::default(),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         ui.spawn((

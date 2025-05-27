@@ -1,4 +1,4 @@
-use crate::{ui::ChangeSongNameEvent, GameState};
+use crate::{settings::Settings, ui::ChangeSongNameEvent, GameState};
 use bevy::{audio::Volume, prelude::*};
 use bevy_lunex::cosmic_text::Change;
 use rand::{rng, Rng};

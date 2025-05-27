@@ -23,7 +23,7 @@ pub const METRO_BLUE_COLOR: Color = Color::srgb(0x45 as f32 /255., 0x79 as f32 /
 pub const METRO_LIGHT_BLUE_COLOR: Color = Color::srgb(0x29 as f32 / 255., 0x9b as f32 / 255., 0xe2 as f32 / 255.);
 pub const BUTTON_SIZE: f32 = 14.0;
 pub const BUTTON_GAP: f32 = 11.0;
-pub const MAIN_MENU_BUTTONS: [&str; 4] = ["Новая игра","Обучение","Настройки", "Выйти"];
+pub const MAIN_MENU_BUTTONS: [&str; 3] = ["Новая игра","Обучение", "Выйти"];
 
 pub const UI_FONT: &str = "fonts/FiraSans-Medium.ttf";
 pub const UI_MENU_FONT: &str = "fonts/metromodern.ttf";

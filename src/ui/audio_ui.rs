@@ -10,7 +10,7 @@ use crate::{
 pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Мут"];
 pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
 pub const SMALL_PLAYER_SIZE: f32 = 10.;
-use super::{ UIStyles, METRO_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, UI_FONT
+use super::{ UIStyles, METRO_BLUE_COLOR, OPACITY_LEVEL_BLUR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
 };
 
 pub struct AudioUIPlugin;
@@ -147,12 +147,11 @@ impl PlayerUI {
                             UiLayoutTypeWindow::new().anchor_left().rl_size(SMALL_PLAYER_SIZE, SMALL_PLAYER_SIZE /2.).rl_pos(50. - SMALL_PLAYER_SIZE / 2.,0.).pack(),
                             Sprite{
                                 image: asset_server.load("button_symetric_sliced.png"),
+                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
 //                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
         // Here we enable sprite slicing
-                                color: Color::BLACK,
                                 ..default() 
                             },
-                            UiColor::from(METRO_BLUE_COLOR),//kokok
                         )).with_children(|ui|{
                             let mut current_offset = 0.;
                             for i in 0..3{
