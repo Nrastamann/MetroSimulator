@@ -271,8 +271,9 @@ fn start_moving(
             queue.push_back(starting_line.unwrap());
 
             let mut visited = HashMap::new();
-
             let mut last_station = starting_station.unwrap();
+
+            let mut visited_lines: Vec<usize> = vec![];
 
             while let Some(line_id) = queue.pop_front() {
                 if line_id == destination_line.unwrap() {
@@ -298,6 +299,10 @@ fn start_moving(
                     .iter()
                     .filter(|&current| *current != metro.lines[line_id])
                 {
+                    if visited_lines.contains(&line.id) {
+                        continue;
+                    }
+
                     for station in line.stations.iter() {
                         if metro.lines[line_id].stations.contains(station) {
                             if visited.contains_key(&station.position) {
@@ -306,8 +311,9 @@ fn start_moving(
 
                             queue.push_back(line.id);
                             visited.insert(station.position, Some(*last_station));
+                            visited_lines.push(line.id);
                             last_station = station;
-                            continue;
+                            break;
                         }
                     }
                 }
