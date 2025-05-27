@@ -10,7 +10,7 @@ use crate::{
 pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Мут"];
 pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
 pub const PLAYER_TOP_BUTTONS: [&str; 3] = ["Влево", "Пауза", "Вправо"];
-pub const SMALL_PLAYER_SIZE: f32 = 20.;
+pub const SMALL_PLAYER_SIZE: f32 = 10.;
 use super::{
     LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_BLUE_COLOR, METRO_LIGHT_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
 };
@@ -147,7 +147,13 @@ impl PlayerUI {
                             Visibility::Visible,
                             PlayerType(0),
                             UiLayoutTypeWindow::new().anchor_left().rl_size(SMALL_PLAYER_SIZE, SMALL_PLAYER_SIZE /2.).rl_pos(50. - SMALL_PLAYER_SIZE / 2.,0.).pack(),
-                            Sprite::default(),
+                            Sprite{
+                                image: asset_server.load("button_symetric_sliced.png"),
+//                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
+        // Here we enable sprite slicing
+                                color: Color::BLACK,
+                                ..default() 
+                            },
                             UiColor::from(METRO_BLUE_COLOR),//kokok
                         )).with_children(|ui|{
                             let mut current_offset = 0.;
@@ -158,7 +164,7 @@ impl PlayerUI {
                                 }
                             ui.spawn((
                                 Name::new("Button".to_string()+&i.to_string()),
-                                UiLayoutTypeWindow::new().anchor_left().rl_pos(current_offset, 0.).rl_size(MINIPLAYER_OFFSET+additional_size,100.).pack(),
+                                UiLayoutTypeWindow::new().anchor_left().rl_pos(current_offset, 0.).rl_size(MINIPLAYER_OFFSET+additional_size ,90.).pack(),
                             )).with_children(|ui|{
                                 let sprite;
                                 let button_type;
@@ -201,11 +207,11 @@ impl PlayerUI {
                                     ui.spawn((
                                         Name::new("Buttons"),
                                         UiColor::from(Color::BLACK),
-                                        UiLayoutTypeWindow::new().full().pack(),
+                                        UiLayoutTypeWindow::new().anchor_center().rl_size(50.,50.).pack(),
                                         sprite,
                                         MiniButtons(button_type),
 
-                                    )).observe(|click: Trigger<Pointer<Click>>, mini_buttons_q:Query<&MiniButtons>,music_player: Res<MusicPlayer>, mut change_track: EventWriter<ChangeTrackEvent> |{
+                                    )).observe(|click: Trigger<Pointer<Click>>, mini_buttons_q:Query<&MiniButtons>, mut change_track: EventWriter<ChangeTrackEvent> |{
                                         match mini_buttons_q.get(click.target).unwrap().0{
                                             0 => {
                                                 change_track.send(ChangeTrackEvent { track: Some(usize::MAX) });
