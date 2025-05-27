@@ -1,30 +1,16 @@
-use std::{default, ops::DerefMut, path::Component};
-
 use bevy::{
-    input::{
-        keyboard,
-        mouse::{MouseButtonInput, MouseWheel},
-    },
     prelude::*,
-    state::commands,
 };
 use bevy_lunex::*;
 
 use crate::{
     audio::{ChangeOrderOfPlaying, ChangeTrackEvent, MusicPlayer, PlayerMode, Soundtrack, MUSIC_NAMES},
-    camera::MainCamera,
-    district::DistrictMap,
-    metro::Metro,
-    money::Money,
-    passenger::PassengerDatabase,
     GameState,
 };
 pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Мут"];
 pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
-pub const PLAYER_TOP_BUTTONS: [&str; 3] = ["Влево", "Пауза", "Вправо"];
 pub const SMALL_PLAYER_SIZE: f32 = 10.;
-use super::{
-    LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_BLUE_COLOR, METRO_LIGHT_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
+use super::{ UIStyles, METRO_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, UI_FONT
 };
 
 pub struct AudioUIPlugin;

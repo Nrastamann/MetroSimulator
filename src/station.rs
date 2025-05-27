@@ -4,14 +4,7 @@ use bevy::prelude::*;
 use rand::Rng;
 
 use crate::{
-    cursor::CursorPosition,
-    line::{SpawnLineCurveEvent, UpdateLineRendererEvent},
-    metro::{Direction, Metro},
-    money::Money,
-    station_blueprint::{SetBlueprintColorEvent, StationBlueprint},
-    train::SpawnTrainEvent,
-    ui::{BuildingLineTutorial, MoneyRedrawEvent, ProlongLineTutorial},
-    GameState,
+    camera::MainCamera, cursor::CursorPosition, line::{SpawnLineCurveEvent, UpdateLineRendererEvent}, metro::{Direction, Metro}, money::Money, station_blueprint::{SetBlueprintColorEvent, StationBlueprint}, train::SpawnTrainEvent, ui::{BuildingLineTutorial, MoneyRedrawEvent, ProlongLineTutorial}, GameState
 };
 
 pub const STATION_NAMES: [&str; 11] = [
@@ -395,6 +388,7 @@ fn toggle_warning(
     mut q_warnings: Query<(&Parent, &mut Visibility, &mut TextColor), With<Text2d>>,
     time: Res<Time>,
     mut next_state: ResMut<NextState<GameState>>,
+    mut camera_q: Query<&mut Transform, With<MainCamera>>,
 ) {
     for (station_e, mut station) in q_station.iter_mut() {
         for (_, mut warning, mut color) in q_warnings
@@ -415,6 +409,7 @@ fn toggle_warning(
 
                 if station.gameover_timer.just_finished() {
                     error!("GAYM OVA");
+                    camera_q.get_single_mut().unwrap().translation = Vec3::new(0., 0., 0.);
                     next_state.set(GameState::MainMenu);
                 }
             } else {
