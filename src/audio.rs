@@ -1,4 +1,4 @@
-use crate::{ui::ChangeSongNameEvent, GameState};
+use crate::{settings::Settings, ui::ChangeSongNameEvent, GameState};
 use bevy::{audio::Volume, prelude::*};
 use bevy_lunex::cosmic_text::Change;
 use rand::{rng, Rng};
@@ -239,9 +239,13 @@ fn play_sfx(
     mut commands: Commands,
     music_player: Res<MusicPlayer>,
     mut play_sfx_ev: EventReader<PlaySFXEvent>,
+    settings: Res<Settings>,
 ) {
     for ev in play_sfx_ev.read() {
         let sfx_num;
+        if !settings.turn_on_sfx{
+            return;
+        }
         match ev.sfx_to_play {
             SFXType::ClickLKMSound => {
                 sfx_num = 0;
@@ -267,8 +271,12 @@ fn play_metro_sfx(
     mut play_metro_sfx_event: EventReader<PlayMetroSFXEvent>,
     music_q: Query<Entity, With<Soundtrack>>,
     music_player: Res<MusicPlayer>,
+    settings: Res<Settings>,
 ) {
     for _ev in play_metro_sfx_event.read() {
+        if !settings.turn_on_metro_sfx{
+            return;
+        }
         for music_e in music_q.iter() {
             commands.entity(music_e).insert(FadeOut(0.5));
         }
@@ -369,6 +377,7 @@ fn change_track(
     game_state: Res<State<GameState>>,
     mut change_song_name: EventWriter<ChangeSongNameEvent>,
     mut music_player: ResMut<MusicPlayer>,
+    settings: Res<Settings>,
 ) {
     for ev in change_track_ev.read() {        
         if ev.track.is_some(){
@@ -410,7 +419,7 @@ fn change_track(
                 Soundtrack,
                 PlaybackSettings {
                     mode: bevy::audio::PlaybackMode::Despawn,
-                    volume: Volume::new(1.),
+                    volume: Volume::new(1. * settings.music_volume),
                     ..default()
                 },
             ));
@@ -445,7 +454,7 @@ fn change_track(
                     Soundtrack,
                     PlaybackSettings {
                         mode: bevy::audio::PlaybackMode::Despawn,
-                        volume: Volume::new(1.),
+                        volume: Volume::new(1. * settings.music_volume),
                         ..default()
                     },
                 ));
@@ -458,7 +467,7 @@ fn change_track(
                     Soundtrack,
                     PlaybackSettings {
                         mode: bevy::audio::PlaybackMode::Despawn,
-                        volume: Volume::new(0.8),
+                        volume: Volume::new(0.8 * settings.music_volume),
                         ..default()
                     },
                 ));
@@ -469,7 +478,5 @@ fn change_track(
         music_player.current_state = PlayerState::Playing;
     }
 }
-
-fn volume(keyboard: Res<ButtonInput<KeyCode>>) {}
 //прикрутить изменение громкости
 //сделать плеер, как-нибудь, посмотреть, можно ли сделать слайдер, хз

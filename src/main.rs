@@ -5,6 +5,9 @@ mod utils;
 use bevy_2d_line::LineRenderingPlugin;
 use bevy_lunex::{UiLunexDebugPlugin, UiLunexPlugins};
 
+mod settings;
+use settings::SettingsPlugin;
+
 mod camera;
 use camera::CameraPlugin;
 
@@ -73,6 +76,7 @@ fn main() {
         .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin, AudioUIPlugin, //UiLunexDebugPlugin::<0>
             ))
         .add_plugins(DistrictPlugin)
+        .add_plugins(SettingsPlugin)
         .add_plugins(PassengerPlugin)
         .add_plugins(MoneyPlugin)
         .run();

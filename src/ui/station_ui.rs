@@ -8,7 +8,7 @@ use crate::{
 
 use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR, UI_FONT};
 
-pub const RMB_STATS: [&str; 3] = ["Поезда", "Люди на станции", "Прочность станции"];
+pub const RMB_STATS: [&str; 2] = ["Поезда", "Люди на станции"];
 pub const RMB_BUTTONS: [&str; 2] = ["Новая станция", "Новая линия"];
 
 pub const POPUP_WIDTH: f32 = 464.;
@@ -144,7 +144,12 @@ impl PopupMenu {
                 ui.spawn((
                     Name::new("Station Menu"),
                     UiLayout::window().rl_size(100., 100.).pack(),
-                    Sprite::from_color(Color::BLACK, Vec2::new(1., 1.)),
+                    Sprite{image: asset_server.load(
+                        "button_symetric_sliced.png",
+                        
+                    ),
+                    image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }), 
+                    ..default()},
                 ))
                 .with_children(|ui| {
                     ui.spawn((
@@ -159,7 +164,7 @@ impl PopupMenu {
                             .x(Rl(BORDER_WIDTH / POPUP_WIDTH))
                             .pack(),
                         Sprite::default(),
-                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         popup_textboxes.entities.push(
@@ -197,7 +202,7 @@ impl PopupMenu {
                             )))
                             .pack(),
                         Sprite::default(),
-                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         ui.spawn((
