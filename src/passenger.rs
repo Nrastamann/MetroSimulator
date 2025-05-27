@@ -271,8 +271,10 @@ fn start_moving(
             // let mut queue = VecDeque::new();
             // queue.push_back(starting_line.unwrap());
 
-            // let mut visited = HashMap::new();
-            // let mut last_station = starting_station.unwrap();
+            let mut visited = HashMap::new();
+            let mut last_station = starting_station.unwrap();
+
+            let mut visited_lines: Vec<usize> = vec![];
 
             // let mut visited_lines: Vec<usize> = vec![];
 
@@ -295,30 +297,30 @@ fn start_moving(
             //     // NEVERMIND
             //     // I HATE MY PAST SELF
 
-            //     for line in metro
-            //         .lines
-            //         .iter()
-            //         .filter(|&current| *current != metro.lines[line_id])
-            //     {
-            //         if visited_lines.contains(&line.id) {
-            //             continue;
-            //         }
+                for line in metro
+                    .lines
+                    .iter()
+                    .filter(|&current| *current != metro.lines[line_id])
+                {
+                    if visited_lines.contains(&line.id) {
+                        continue;
+                    }
 
-            //         for station in line.stations.iter() {
-            //             if metro.lines[line_id].stations.contains(station) {
-            //                 if visited.contains_key(&station.position) {
-            //                     continue;
-            //                 }
+                    for station in line.stations.iter() {
+                        if metro.lines[line_id].stations.contains(station) {
+                            if visited.contains_key(&station.position) {
+                                continue;
+                            }
 
-            //                 queue.push_back(line.id);
-            //                 visited.insert(station.position, Some(*last_station));
-            //                 visited_lines.push(line.id);
-            //                 last_station = station;
-            //                 break;
-            //             }
-            //         }
-            //     }
-            // }
+                            queue.push_back(line.id);
+                            visited.insert(station.position, Some(*last_station));
+                            visited_lines.push(line.id);
+                            last_station = station;
+                            break;
+                        }
+                    }
+                }
+            }
         }
     }
 }
