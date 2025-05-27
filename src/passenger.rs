@@ -19,7 +19,8 @@ impl Plugin for PassengerPlugin {
             Update,
             (
                 add_passengers,
-                decide_where_to_go,
+                decide_where_to_go
+                    .run_if(on_timer(Duration::from_secs(5))),
                 start_moving,
                 fill_passenger_pool
                     // не слишком часто делаем проверки на заполненный пул мест пассажира
@@ -165,7 +166,7 @@ fn decide_where_to_go(
         let destination_district_id = passenger.district_ids[random_desire as usize];
         let district = &district_map.districts[destination_district_id];
 
-        for line in metro.lines.iter() {
+        'line_loop: for line in metro.lines.iter() {
             for station in line.stations.iter() {
                 for cell in district.cells.iter() {
                     let cell_position =
@@ -179,7 +180,7 @@ fn decide_where_to_go(
                     }
 
                     passenger.route.push(*station);
-                    break;
+                    break 'line_loop;
                 }
             }
         }
@@ -199,13 +200,13 @@ fn start_moving(
     {
         for id in district.passenger_ids.clone().iter() {
             let passenger = database.0.get(id).unwrap();
-            if passenger.route.len() == 0 {
+            if passenger.route.len() <= 0 {
                 continue;
             }
 
             let mut starting_line = None;
             let mut starting_station = None;
-            let destination_station = database.0.get(id).unwrap().route[0];
+            let destination_station = passenger.route[0];
 
             // WTF IS THIS SHIT
             let mut destination_line = None;

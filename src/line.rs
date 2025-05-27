@@ -50,7 +50,7 @@ impl MetroLine {
             id,
             stations: stations,
             curve,
-            color: Color::hsl(rng.random_range(0..=12) as f32 * 30., 0.5, 0.5)
+            color: Color::hsl(rng.random_range(0..=12) as f32 * 30., 0.75, 0.5)
         }
     }
 
