@@ -10,7 +10,7 @@ use crate::{
 pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Мут"];
 pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
 pub const SMALL_PLAYER_SIZE: f32 = 10.;
-use super::{ UIStyles, METRO_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, UI_FONT
+use super::{ UIStyles, METRO_BLUE_COLOR, OPACITY_LEVEL_BLUR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
 };
 
 pub struct AudioUIPlugin;
@@ -130,12 +130,11 @@ impl PlayerUI {
                             UiLayoutTypeWindow::new().anchor_left().rl_size(SMALL_PLAYER_SIZE, SMALL_PLAYER_SIZE /2.).rl_pos(50. - SMALL_PLAYER_SIZE / 2.,0.).pack(),
                             Sprite{
                                 image: asset_server.load("button_symetric_sliced.png"),
+                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
 //                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
         // Here we enable sprite slicing
-                                color: Color::BLACK,
                                 ..default() 
                             },
-                            UiColor::from(METRO_BLUE_COLOR),//kokok
                         )).with_children(|ui|{
                             let mut current_offset = 0.;
                             for i in 0..3{
@@ -224,7 +223,7 @@ impl PlayerUI {
                                 .rl_pos(30., 30.)
                                 .rl_size(40., 40.)
                                 .pack(),
-                            UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_HIGHEST)),
+                            UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_BLUR)),
                             Sprite::default(),
                             PlayerType(1),
                             Visibility::Hidden,
@@ -423,7 +422,7 @@ impl PlayerUI {
                                         Name::new(i.to_string()),
                                         UiLayoutTypeWindow::new().anchor_left().rl_size(100., 20.).y(Rl(offset)).pack(),
                                         Sprite::default(),
-                                        UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_HIGHEST)),
+                                        UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_BLUR)),
 
                                     )).with_children(|ui|{
                                     ui.spawn((
@@ -611,7 +610,7 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
             name_tag_q.get_single_mut().unwrap().0 = MUSIC_NAMES[picked_track + (page_count.0 - 1) * 5][..MUSIC_NAMES[picked_track + (page_count.0 - 1) * 5].len()-4].to_string();
 
             let (mut track_handler_color, kids) = tracks_holders_q.get_mut(player_enitites.entities_tracks[picked_track]).unwrap(); 
-            *track_handler_color = UiColor::from(Color::srgba(0xd3 as f32 /255., 0xd3 as f32 /255., 0xd3 as f32 /255., OPACITY_LEVEL_HIGHEST));
+            *track_handler_color = UiColor::from(Color::srgba(0xd3 as f32 /255., 0xd3 as f32 /255., 0xd3 as f32 /255., OPACITY_LEVEL_MAIN));
             for _kid in kids.iter(){
 //                let (mut color,mut text) = track_names_q.get_mut(*kid).unwrap();
             }

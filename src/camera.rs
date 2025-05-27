@@ -139,10 +139,10 @@ fn zoom_camera(
         match ev.unit {
             MouseScrollUnit::Line => {
                 if ev.y > 0.0 && camera.target_zoom - 0.25 >= camera.min_zoom {
-                    camera.target_zoom -= 0.25;
+                    camera.target_zoom -= 0.1;
                 }
                 if ev.y < 0.0 && camera.target_zoom + 0.25 <= camera.max_zoom {
-                    camera.target_zoom += 0.25;
+                    camera.target_zoom += 0.1;
                 }
                 let Ok((mut vision, mut size)) = popup_q.get_single_mut() else {
                     return;
