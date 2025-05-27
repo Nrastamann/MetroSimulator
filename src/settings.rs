@@ -9,7 +9,7 @@ impl Plugin for SettingsPlugin {
 }
 
 #[derive(Resource)]
-pub struct Money(pub u32);
+pub struct Settings(pub u32);
 
 impl Default for Money {
     fn default() -> Self {
