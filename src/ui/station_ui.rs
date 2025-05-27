@@ -148,7 +148,7 @@ impl PopupMenu {
                         "button_symetric_sliced.png",
                         
                     ),
-                    image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }), 
+                    image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(32.0), ..default() }), 
                     ..default()},
                 ))
                 .with_children(|ui| {
@@ -286,13 +286,13 @@ impl PopupMenu {
                             )))
                             .pack(),
                         Sprite::default(),
-                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
+                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         ui.spawn((
                             Name::new("Current lines block"),
                             UiLayout::window().size(Rl((100., 70.))).pack(),
-                            UiColor::from(METRO_LIGHT_BLUE_COLOR),
+                            UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                             Sprite::default(),
                         ))
                         .with_children(|ui| {
@@ -308,7 +308,7 @@ impl PopupMenu {
                                             .pack(),
                                         LineHandlerFlag { line_id: i },
                                         Sprite::default(),
-                                        UiColor::from(METRO_LIGHT_BLUE_COLOR),
+                                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                                         Visibility::Hidden,
                                     ))
                                     .with_children(|ui| {
@@ -375,9 +375,9 @@ impl PopupMenu {
                                     UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                     //                                    UiColor::from(Color::BLACK),
                                     UiColor::new(vec![
-                                        (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
-                                        (UiHover::id(), Color::WHITE),
-                                    ]),
+                                        (UiBase::id(), Color::WHITE.with_alpha(0.2)),
+                                        (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(0.2)),
+                                    ])
                                 ))
                                 .with_children(|ui| {
                                     ui.spawn((
@@ -434,8 +434,8 @@ impl PopupMenu {
                                             Sprite::default(),
                                             UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                             UiColor::new(vec![
-                                                (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
-                                                (UiHover::id(), Color::WHITE),
+                                                (UiBase::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+                                                (UiHover::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
                                             ]),
                                         ))
                                         .with_children(
@@ -448,8 +448,8 @@ impl PopupMenu {
                                                             .forward_speed(20.0)
                                                             .backward_speed(4.0),
                                                         UiColor::new(vec![
-                                                            (UiBase::id(), Color::WHITE),
-                                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
+                                                            (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
+                                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                                                         ]),
                                                         UiTextSize::from(Rh(65.)),
                                                         Text2d::new(i),
@@ -602,11 +602,11 @@ fn redraw_lines_menu(
             panic!("Error: Popup is not founded");
         };
         for (mut color, _previous_handler, child_prev) in line_handlers_q.iter_mut() {
-            *color = UiColor::from(METRO_LIGHT_BLUE_COLOR);
+            *color = UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST));
 
             *text_query
                 .get_mut(*child_prev.iter().next().unwrap())
-                .unwrap() = UiColor::from(Color::WHITE);
+                .unwrap() = UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST));
         }
         /*
                 let (mut color, _previous_handler, child_prev) = line_handlers_q
@@ -633,26 +633,26 @@ fn redraw_lines_menu(
             bg_color.hue -= 180.;
         }
 
-        *color_new = UiColor::from(bg_color);
+        *color_new = UiColor::from(Color::srgba(0.2,0.2,0.2,0.6));
 
         *text_query
             .get_mut(*child_now.iter().next().unwrap())
-            .unwrap() = UiColor::from(metro.lines[menu.picked_line].color);
+            .unwrap() = UiColor::from(Color::WHITE);
 
         let (mut button_press, button_child) = button_q.get_single_mut().unwrap();
 
         *ui_color_button_q
             .get_mut(*button_child.iter().next().unwrap())
             .unwrap() = UiColor::new(vec![
-            (UiBase::id(), METRO_LIGHT_BLUE_COLOR),
-            (UiHover::id(), Color::WHITE),
+            (UiBase::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_MAIN)),
+            (UiHover::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
         ]);
 
         *text_query
             .get_mut(text_references.entities[POPUP_STATION_BUTTON])
             .unwrap() = UiColor::new(vec![
-            (UiBase::id(), Color::WHITE),
-            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
+            (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
+            (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_MAIN)),
         ]);
 
         button_press.can_continue = true;
@@ -673,8 +673,8 @@ fn redraw_lines_menu(
             *ui_color_button_q
                 .get_mut(*button_child.iter().next().unwrap())
                 .unwrap() = UiColor::new(vec![
-                (UiBase::id(), Color::hsv(0., 0., 74.)),
-                (UiHover::id(), Color::hsv(0., 0., 74.)),
+                (UiBase::id(), Color::hsva(0., 0., 74., 0.2)),
+                (UiHover::id(), Color::hsva(0., 0., 74., 0.2)),
             ]);
 
             *text_query
