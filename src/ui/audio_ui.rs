@@ -22,7 +22,7 @@ use crate::{
 pub const PLAYER_SIGNS: [&str; 3] = ["По порядку", "Пауза", "Мут"];
 pub const PLAYER_BOT_BUTTONS: [&str; 3] = ["Влево", "Номер стр", "Вправо"];
 pub const PLAYER_TOP_BUTTONS: [&str; 3] = ["Влево", "Пауза", "Вправо"];
-pub const SMALL_PLAYER_SIZE: f32 = 20.;
+pub const SMALL_PLAYER_SIZE: f32 = 10.;
 use super::{
     LinesResource, RedrawEvent, TextboxResource, UIStyles, METRO_BLUE_COLOR, METRO_LIGHT_BLUE_COLOR, OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT
 };
@@ -54,6 +54,21 @@ pub enum RedrawType{
     ChangePage,
     Redraw,
     ChangePicked(usize),
+}
+
+pub enum ButtonState{
+    Pause,
+    Play,
+    Mute,
+    Loud,
+    Shuffle,
+    Line,
+    Repeat,
+}
+
+#[derive(Component)]
+pub struct ButtonStateComponent{
+    button_state: ButtonState,
 }
 
 #[derive(Component)]
@@ -127,7 +142,13 @@ impl PlayerUI {
                             Visibility::Visible,
                             PlayerType(0),
                             UiLayoutTypeWindow::new().anchor_left().rl_size(SMALL_PLAYER_SIZE, SMALL_PLAYER_SIZE /2.).rl_pos(50. - SMALL_PLAYER_SIZE / 2.,0.).pack(),
-                            Sprite::default(),
+                            Sprite{
+                                image: asset_server.load("button_symetric_sliced.png"),
+//                                image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(16.0), ..default() }),
+        // Here we enable sprite slicing
+                                color: Color::BLACK,
+                                ..default() 
+                            },
                             UiColor::from(METRO_BLUE_COLOR),//kokok
                         )).with_children(|ui|{
                             let mut current_offset = 0.;
@@ -138,7 +159,7 @@ impl PlayerUI {
                                 }
                             ui.spawn((
                                 Name::new("Button".to_string()+&i.to_string()),
-                                UiLayoutTypeWindow::new().anchor_left().rl_pos(current_offset, 0.).rl_size(MINIPLAYER_OFFSET+additional_size,100.).pack(),
+                                UiLayoutTypeWindow::new().anchor_left().rl_pos(current_offset, 0.).rl_size(MINIPLAYER_OFFSET+additional_size ,90.).pack(),
                             )).with_children(|ui|{
                                 let sprite;
                                 let button_type;
@@ -181,11 +202,11 @@ impl PlayerUI {
                                     ui.spawn((
                                         Name::new("Buttons"),
                                         UiColor::from(Color::BLACK),
-                                        UiLayoutTypeWindow::new().full().pack(),
+                                        UiLayoutTypeWindow::new().anchor_center().rl_size(50.,50.).pack(),
                                         sprite,
                                         MiniButtons(button_type),
 
-                                    )).observe(|click: Trigger<Pointer<Click>>, mini_buttons_q:Query<&MiniButtons>,music_player: Res<MusicPlayer>, mut change_track: EventWriter<ChangeTrackEvent> |{
+                                    )).observe(|click: Trigger<Pointer<Click>>, mini_buttons_q:Query<&MiniButtons>, mut change_track: EventWriter<ChangeTrackEvent> |{
                                         match mini_buttons_q.get(click.target).unwrap().0{
                                             0 => {
                                                 change_track.send(ChangeTrackEvent { track: Some(usize::MAX) });
@@ -269,117 +290,132 @@ impl PlayerUI {
                                 .with_children(|ui| {
                                     let mut offset = 0.;
                                     for i in PLAYER_SIGNS {
+                                        let mut size = 30.;
+                                        if i == "Пауза"{
+                                            size = 40.;
+                                        }
                                         let component;
+                                        let sprite;
+                                        let button_state;
                                         match i{
                                             "По порядку" =>{
+                                                button_state = ButtonStateComponent{button_state: ButtonState::Line};
                                                 component = PlayerButton(0);
+                                                sprite = Sprite{image: asset_server.load("mix.png"),..default()}
                                             }
                                             "Пауза" =>{
+                                                button_state = ButtonStateComponent{button_state: ButtonState::Pause};
                                                 component = PlayerButton(1);
+                                                sprite = Sprite{image: asset_server.load("pause.png"),..default()}
                                             }
                                             "Мут" =>{
+                                                button_state = ButtonStateComponent{button_state: ButtonState::Loud};
                                                 component = PlayerButton(2);
+                                                sprite = Sprite{image: asset_server.load("loud.png"),..default()}
                                             }
                                             _ =>{
+                                                button_state = ButtonStateComponent{button_state: ButtonState::Loud};
+                                                sprite = Sprite::default();
                                                 component = PlayerButton(3);
                                             }
                                         }
-                                        let mut button_e = ui.spawn((
+                                        ui.spawn((
                                             Name::new(i),
                                             UiLayoutTypeWindow::new()
                                                 .anchor_left()
-                                                .rl_pos(0.5 + offset, 0.)
-                                                .rl_size(33., 100.)
+                                                .rl_pos(offset, 0.)
+                                                .rl_size(size, 100.)
                                                 .pack(),
-                                                component
-                                        ));
-                                        button_e.with_children(|ui| {
-                                            ui.spawn((
+                                                component,
+                                        )).with_children(|ui| {
+                                            let mut button_e = ui.spawn((
                                                 Name::new("Button"),
                                                 UiLayoutTypeWindow::new()
-                                                    .rl_size(100., 100.)
+                                                .anchor_center()
+                                                    .size((Rh(100.), Rl(100.)))
                                                     .pack(),
-                                            ))
-                                            .with_children(|ui| {
+                                                sprite,
+                                                button_state,
+                                            ));
+                                            button_e.with_children(|ui| {
                                                 player_entities.entities_text.push(
                                                     ui.spawn((
                                                         Name::new("ButtonTextx"),
                                                         UiLayout::window().anchor_center().pack(),
                                                         UiColor::from(Color::BLACK),
-                                                        UiTextSize::from(Rh(100.)),
-                                                        Text2d::new(i.to_string()),
-                                                        TextFont {
-                                                            font: asset_server.load(UI_FONT),
-                                                            font_size: 96.,
-                                                            ..default()
-                                                        },
+                                                        // UiTextSize::from(Rh(100.)),
+                                                        // Text2d::new(i.to_string()),
+                                                        // TextFont {
+                                                        //     font: asset_server.load(UI_FONT),
+                                                        //     font_size: 96.,
+                                                        //     ..default()
+                                                        // },
                                                         PickingBehavior::IGNORE,
                                                     ))
                                                     .id(),
                                                 );
                                             });
-                                        });
-                                        button_e.observe(|clck: Trigger<Pointer<Click>>,mut change_order_ev: EventWriter<ChangeOrderOfPlaying>, button_q: Query<&PlayerButton> , mut music: Query<&mut AudioSink, With<Soundtrack>>,mut music_player: ResMut<MusicPlayer>,player_entities: ResMut<PlayerEntities>, mut text_q: Query<&mut Text2d>,| {
-                                            let button_type = button_q.get(clck.entity()).unwrap();
-                                        
-                                            if button_type.0 > 2{
-                                                println!("FUCK WRONG SMTh");
-                                                return 
-                                            }
-                                            
-                                            let mut text = text_q.get_mut(player_entities.entities_text[button_type.0]).unwrap();
-                                            let text_for_button;
-                                            match &*text.0{
-                                                "Мут" => {
-                                                        text_for_button = "Вернуть громкость";
+                                            button_e.observe(|clck: Trigger<Pointer<Click>>,mut change_order_ev: EventWriter<ChangeOrderOfPlaying>, mut button_q: Query<(&mut Sprite,&mut ButtonStateComponent)> , mut music: Query<&mut AudioSink, With<Soundtrack>>,mut music_player: ResMut<MusicPlayer>,player_entities: ResMut<PlayerEntities>, asset_server:Res<AssetServer>,mut text_q: Query<&mut Text2d>,| {
+                                                let (mut button_sprite, mut button_type) = button_q.get_mut(clck.entity()).unwrap();
+                                                
+                                                match button_type.button_state{
+                                                    ButtonState::Loud => {
+                                                            button_sprite.image = asset_server.load("mute.png");
+                                                            button_type.button_state = ButtonState::Mute;
+                                                            for i in music.iter_mut(){
+                                                                i.set_volume(0.);
+                                                            }
+                                                        }
+                                                        ButtonState::Mute =>{
+                                                            button_sprite.image = asset_server.load("loud.png");
+                                                            button_type.button_state = ButtonState::Loud;
                                                         for i in music.iter_mut(){
-                                                            i.set_volume(0.);
+                                                            i.set_volume(1.);
                                                         }
                                                     }
-                                                "Вернуть громкость" =>{
-                                                    text_for_button = "Мут";
-                                                    for i in music.iter_mut(){
-                                                        i.set_volume(1.);
+    
+                                                    ButtonState::Pause =>{
+                                                        button_sprite.image = asset_server.load("play.png");
+                                                        button_type.button_state = ButtonState::Play;
+                                                        for i in music.iter_mut(){
+                                                            i.toggle();
+                                                        }
+                                                    }
+    
+                                                    ButtonState::Play =>{
+                                                        button_sprite.image = asset_server.load("pause.png");
+                                                        button_type.button_state = ButtonState::Pause;
+                                                        for i in music.iter_mut(){
+                                                            i.toggle();
+                                                        }
+                                                    }
+    
+                                                    ButtonState::Line =>{
+                                                        button_sprite.image = asset_server.load("ShuffleOn.png");//change
+                                                        button_type.button_state = ButtonState::Shuffle;
+                                                        change_order_ev.send(ChangeOrderOfPlaying);
+                                                        music_player.player_mode = PlayerMode::Shuffle;
+                                                    }
+                                                    
+                                                    ButtonState::Shuffle =>{
+                                                        button_sprite.image = asset_server.load("repeat.png");
+                                                        button_type.button_state = ButtonState::Repeat;
+                                                        music_player.player_mode = PlayerMode::SingleRepeat;
+                                                    }
+    
+                                                    ButtonState::Repeat =>{
+                                                        button_sprite.image = asset_server.load("mix.png");
+                                                        button_type.button_state = ButtonState::Line;
+                                                        change_order_ev.send(ChangeOrderOfPlaying);
+                                                        music_player.player_mode = PlayerMode::Straight;
+                                                    }
+                                                    _ =>{
+                                                     panic!("MY MAMA");    
                                                     }
                                                 }
-
-                                                "Пауза" =>{
-                                                    text_for_button = "Продолжить";
-                                                    for i in music.iter_mut(){
-                                                        i.toggle();
-                                                    }
-                                                }
-
-                                                "Продолжить" =>{
-                                                    text_for_button = "Пауза";
-                                                    for i in music.iter_mut(){
-                                                        i.toggle();
-                                                    }
-                                                }
-
-                                                "По порядку" =>{
-                                                    text_for_button = "Случайно";
-                                                    change_order_ev.send(ChangeOrderOfPlaying);
-                                                    music_player.player_mode = PlayerMode::Shuffle;
-                                                }
-                                                
-                                                "Случайно" =>{
-                                                    text_for_button = "Зациклено";
-                                                    music_player.player_mode = PlayerMode::SingleRepeat;
-                                                }
-
-                                                "Зациклено" =>{
-                                                    text_for_button = "По порядку";
-                                                    change_order_ev.send(ChangeOrderOfPlaying);
-                                                    music_player.player_mode = PlayerMode::Straight;
-                                                }
-                                                _ =>{
-                                                 panic!("MY MAMA");    
-                                                }
-                                            }
-                                            text.0 = text_for_button.to_string();
+                                            });
                                         });
-                                        offset += 33.;
+                                        offset += size;
                                     }
                                 });
                             });
@@ -466,21 +502,24 @@ impl PlayerUI {
                                             ));
                                         }else{
                                             let arrow;
+                                            let sprite;
                                             let visibility;
                                             match i{
                                                 "Влево" => {
                                                     arrow = Arrow(ComponentOrientation::Left);
+                                                    sprite = Sprite{image: asset_server.load("playleft.png"),..default()};
                                                     visibility = Visibility::Hidden;
                                                 }
                                                 _ =>{
                                                     arrow = Arrow(ComponentOrientation::Right);
+                                                    sprite = Sprite{image: asset_server.load("play.png"),..default()};
                                                     visibility = Visibility::Hidden;
                                                 }
                                             }
                                         ui.spawn((
                                             Name::new("Button"),
-                                            UiLayoutTypeWindow::new().full().pack(),
-                                            Sprite::from_image(asset_server.load("button.png")),
+                                            UiLayoutTypeWindow::new().anchor_center().size(Rh((100.,100.))).pack(),
+                                            sprite,
                                             arrow,
                                             visibility,
                                         )).observe(|clck: Trigger<Pointer<Click>>,
@@ -530,13 +569,14 @@ fn change_song_mini_player(mut change_song_name_ev: EventReader<ChangeSongNameEv
     }
 }
 fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>, 
-    mut player_buttons: Query<(&Arrow, &mut Visibility)>,
-    mut pages_q: Query<(&mut Text2d,&mut PageNumber), Without<CurrentTrack>>,
+    mut player_buttons: Query<(&Arrow, &mut Visibility),Without<PlayerType>>,
+    mut pages_q: Query<(&mut Text2d,&mut PageNumber), (Without<CurrentTrack>,Without<PlayerType>)>,
     music_player: Res<MusicPlayer>,
     player_enitites: Res<PlayerEntities>,
-    mut tracks_holders_q: Query<(&mut UiColor, &Children), (With<UiLayout>, Without<Text2d>,Without<CurrentTrack>,Without<PageNumber>)>,
-    mut track_names_q: Query<(&mut UiColor, &mut Text2d),(Without<PageNumber>,Without<CurrentTrack>)>,
-    mut name_tag_q: Query<&mut Text2d,(With<CurrentTrack>,Without<Children>,Without<UiLayoutRoot>,)>,
+    mut tracks_holders_q: Query<(&mut UiColor, &Children), (With<UiLayout>, Without<Text2d>,Without<CurrentTrack>,Without<PageNumber>,Without<PlayerType>)>,
+    mut track_names_q: Query<(&mut UiColor, &mut Text2d),(Without<PageNumber>,Without<CurrentTrack>,Without<PlayerType>)>,
+    mut name_tag_q: Query<&mut Text2d,(With<CurrentTrack>,Without<Children>,Without<UiLayoutRoot>,Without<PlayerType>)>,
+    mut player_root_q: Query<(&Visibility, &PlayerType)>,
 ){
     for ev in redraw_tracks_ev.read(){
         let (mut text_page,mut page_count) = pages_q.get_single_mut().unwrap();
@@ -590,6 +630,8 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
 //                let (mut color,mut text) = track_names_q.get_mut(*kid).unwrap();
             }
         }
+        let (visibility_p, _) = player_root_q.iter().filter(|(player_v, player_type)|{player_type.0 == 1}).next().unwrap();
+        if *visibility_p == Visibility::Visible{
         for (arrow, mut visibility) in player_buttons.iter_mut(){
             if arrow.0 == ComponentOrientation::Left && page_count.0 > 1   {
                 *visibility = Visibility::Visible; 
@@ -600,6 +642,7 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
                 *visibility = Visibility::Visible; 
                 continue;
             }
+        }
         }
     }
 }
