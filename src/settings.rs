@@ -9,10 +9,9 @@ impl Plugin for SettingsPlugin {
 }
 
 #[derive(Resource)]
-pub struct Settings(pub u32);
-
-impl Default for Money {
-    fn default() -> Self {
-        Self(99999)
-    }
+pub struct Settings{
+    music_volume: f32,
+    turn_on_metro_sfx: bool,
+    sfx_volume: f32,
+    metro_sfx_volume: f32,
 }
