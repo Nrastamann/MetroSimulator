@@ -2,7 +2,7 @@ use std::time::Duration;
 
 use bevy::{prelude::*, time::common_conditions::on_timer};
 
-use crate::{passenger::AddPassengerEvent, GameState, DISTRICT_CELL_SIZE, MAX_DISTRICT_SIZE};
+use crate::{metro::Metro, passenger::AddPassengerEvent, GameState, DISTRICT_CELL_SIZE, MAX_DISTRICT_SIZE};
 
 pub struct DistrictPlugin;
 
@@ -16,7 +16,8 @@ impl Plugin for DistrictPlugin {
             grow_districts
                 .run_if(on_timer(Duration::from_millis(500))),
             start_new_districts
-                .run_if(on_timer(Duration::from_millis(1000))),
+                .run_if(on_timer(Duration::from_millis(1000)))
+                .run_if(should_start_new_districts),
             draw_district_cells
         )
         .run_if(in_state(GameState::InGame)));
@@ -93,6 +94,20 @@ fn test_gen_district(
     district_map.cells.push((0,0));
 
     district_map.districts.push(district);
+}
+
+fn should_start_new_districts(
+    metro: Res<Metro>,
+    district_map: Res<DistrictMap>
+) -> bool {
+
+    let station_count = metro.lines.iter().map(|line| line.stations.len()).sum();
+
+    if district_map.districts.len() <= station_count {
+        return true;
+    }
+
+    false
 }
 
 fn start_new_districts(
