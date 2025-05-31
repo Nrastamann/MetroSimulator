@@ -189,6 +189,7 @@ fn decide_where_to_go(
 
 fn start_moving(
     database: Res<PassengerDatabase>,
+    database: Res<PassengerDatabase>,
     mut district_map: ResMut<DistrictMap>,
     metro: ResMut<Metro>,
     mut q_station_button: Query<(&mut StationButton, &Station)>,
@@ -205,6 +206,7 @@ fn start_moving(
             }
 
             let mut starting_line = None;
+            // let mut starting_station = None;
             // let mut starting_station = None;
             let destination_station = database.0.get(id).unwrap().route[0];
 
@@ -258,6 +260,7 @@ fn start_moving(
 
                         starting_line = Some(line.id);
                         // starting_station = Some(station);
+                        // starting_station = Some(station);
 
                         break 'line_loop;
                     }
@@ -270,11 +273,11 @@ fn start_moving(
 
             // let mut queue = VecDeque::new();
             // queue.push_back(starting_line.unwrap());
+            // let mut queue = VecDeque::new();
+            // queue.push_back(starting_line.unwrap());
 
-            let mut visited = HashMap::new();
-            let mut last_station = starting_station.unwrap();
-
-            let mut visited_lines: Vec<usize> = vec![];
+            // let mut visited = HashMap::new();
+            // let mut last_station = starting_station.unwrap();
 
             // let mut visited_lines: Vec<usize> = vec![];
 
@@ -296,31 +299,36 @@ fn start_moving(
             //     // OH IT WAS ME
             //     // NEVERMIND
             //     // I HATE MY PAST SELF
+            //     // WHAT THE FUCK
+            //     // WHO WROTE THIS SHIT
+            //     // OH IT WAS ME
+            //     // NEVERMIND
+            //     // I HATE MY PAST SELF
 
-                for line in metro
-                    .lines
-                    .iter()
-                    .filter(|&current| *current != metro.lines[line_id])
-                {
-                    if visited_lines.contains(&line.id) {
-                        continue;
-                    }
+            //     for line in metro
+            //         .lines
+            //         .iter()
+            //         .filter(|&current| *current != metro.lines[line_id])
+            //     {
+            //         if visited_lines.contains(&line.id) {
+            //             continue;
+            //         }
 
-                    for station in line.stations.iter() {
-                        if metro.lines[line_id].stations.contains(station) {
-                            if visited.contains_key(&station.position) {
-                                continue;
-                            }
+            //         for station in line.stations.iter() {
+            //             if metro.lines[line_id].stations.contains(station) {
+            //                 if visited.contains_key(&station.position) {
+            //                     continue;
+            //                 }
 
-                            queue.push_back(line.id);
-                            visited.insert(station.position, Some(*last_station));
-                            visited_lines.push(line.id);
-                            last_station = station;
-                            break;
-                        }
-                    }
-                }
-            }
+            //                 queue.push_back(line.id);
+            //                 visited.insert(station.position, Some(*last_station));
+            //                 visited_lines.push(line.id);
+            //                 last_station = station;
+            //                 break;
+            //             }
+            //         }
+            //     }
+            // }
         }
     }
 }
