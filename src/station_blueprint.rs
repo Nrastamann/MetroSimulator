@@ -22,7 +22,7 @@ pub struct StationBlueprintPlugin;
 impl Plugin for StationBlueprintPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<SetBlueprintColorEvent>();
-        app.add_systems(Startup, init_blueprint);
+        app.add_systems(OnEnter(GameState::InGame), init_blueprint);
         app.add_systems(
             Update,
             (stick_to_mouse, toggle_station_blueprint, start_building)
@@ -38,6 +38,7 @@ fn init_blueprint(
 ) {
     let material = materials.add(Color::WHITE.with_alpha(0.0));
     commands.spawn((
+        StateScoped(GameState::InGame),
         Mesh2d(meshes.add(Circle::new(25.))),
         MeshMaterial2d(material.clone()),
         StationBlueprint {
