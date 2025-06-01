@@ -25,7 +25,7 @@ mod audio;
 use audio::AudioPlugin;
 
 mod ui;
-use ui::{MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin, AudioUIPlugin};
+use ui::{MainMenuPlugin, StationUIPlugin, SettingsUIPlugin,  TutorialUIPlugin, MoneyUIPlugin, AudioUIPlugin};
 
 mod line;
 
@@ -73,7 +73,7 @@ fn main() {
         .add_plugins(MetroLinePlugin)
         .add_plugins(TrainPlugin)
         .add_plugins(AudioPlugin)
-        .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin, AudioUIPlugin, //UiLunexDebugPlugin::<0>
+        .add_plugins((MainMenuPlugin, StationUIPlugin, TutorialUIPlugin, MoneyUIPlugin, AudioUIPlugin, SettingsUIPlugin, UiLunexDebugPlugin::<0>
             ))
         .add_plugins(DistrictPlugin)
         .add_plugins(SettingsPlugin)
