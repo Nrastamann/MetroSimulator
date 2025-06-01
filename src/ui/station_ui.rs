@@ -22,8 +22,7 @@ pub const BORDER_WIDTH: f32 = 96.;
 const POPUP_NAME: usize = 0;
 const POPUP_TRAINS_AMOUNT: usize = 1;
 const POPUP_AMOUNT_OF_PEOPLE: usize = 2;
-const POPUP_STATION_CAPACITY: usize = 3;
-const POPUP_LINE_HANDLER: usize = 4;
+const POPUP_LINE_HANDLER: usize = 3;
 const POPUP_STATION_BUTTON: usize = 8;
 
 pub const OPACITY_LEVEL_MAIN: f32 = 0.8;
@@ -401,7 +400,7 @@ impl PopupMenu {
                             })
                             .observe(hover_set::<Pointer<Over>, true>)
                             .observe(hover_set::<Pointer<Out>, false>)
-                            .observe(|_: Trigger<Pointer<Click>>,mut money: ResMut<Money>, mut change_money_ui: EventWriter<MoneyRedrawEvent>, mut buy_train: EventWriter<SpawnTrainEvent>, mut buy_train_t: EventWriter<BuyTrainTutorial>,popup_q: Query<&PopupMenu, With<UiLayoutRoot>>| {
+                            .observe(|_: Trigger<Pointer<Click>>,mut money: ResMut<Money>, metro: Res<Metro>,mut change_money_ui: EventWriter<MoneyRedrawEvent>, mut buy_train: EventWriter<SpawnTrainEvent>, mut buy_train_t: EventWriter<BuyTrainTutorial>,popup_q: Query<&PopupMenu, With<UiLayoutRoot>>| {
                                 let popup = popup_q.get_single().unwrap();
                                 buy_train.send(SpawnTrainEvent{
                                     line: popup.picked_line,
@@ -449,8 +448,8 @@ impl PopupMenu {
                                                             .forward_speed(20.0)
                                                             .backward_speed(4.0),
                                                         UiColor::new(vec![
-                                                            (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
-                                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+                                                            (UiBase::id(), Color::WHITE),
+                                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
                                                         ]),
                                                         UiTextSize::from(Rh(65.)),
                                                         Text2d::new(i),
@@ -792,16 +791,11 @@ fn redraw_menu(
             .0 = station_info.passenger_ids.len().to_string();
 
         text_query
-            .get_mut(text_references.entities[POPUP_STATION_CAPACITY])
-            .unwrap()
-            .0 = "12".to_string(); //station_info.name.clone(); потом лимит поставтиь
-
-        text_query
             .get_mut(text_references.entities[POPUP_TRAINS_AMOUNT])
             .unwrap()
             .0 = "1".to_string();
 
-        for i in POPUP_LINE_HANDLER..9 + lines_vec.len() - 5 {
+        for i in POPUP_LINE_HANDLER..8 + lines_vec.len() - 5 {
             text_query.get_mut(text_references.entities[i]).unwrap().0 =
                 lines_vec[i - POPUP_LINE_HANDLER].name.clone();
         }

@@ -75,6 +75,8 @@ fn spawn_train(
     for ev in ev_spawn.read() {
         let line = &metro.lines[ev.line];
 
+        println!("line - {}", ev.line);
+
         if !line.stations.contains(&Station {
             position: ev.station,
         }) {
