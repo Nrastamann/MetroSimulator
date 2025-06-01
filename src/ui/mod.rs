@@ -12,3 +12,6 @@ pub use money_ui::*;
 
 mod audio_ui;
 pub use audio_ui::*;
+
+mod settings_ui;
+pub use settings_ui::*;

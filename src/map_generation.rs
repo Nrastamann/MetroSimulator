@@ -6,7 +6,7 @@ pub struct MapGenerationPlugin;
 
 impl Plugin for MapGenerationPlugin{
     fn build(&self, app: &mut App) {
-        app.add_systems(OnExit(GameState::MainMenu), spawn_map);//should i change it to startup back, so it generates events at startup?
+        app.add_systems(OnEnter(GameState::InGame), spawn_map);//should i change it to startup back, so it generates events at startup?
     }
 }
 
