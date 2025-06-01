@@ -23,8 +23,7 @@ pub const BORDER_WIDTH: f32 = 96.;
 const POPUP_NAME: usize = 0;
 const POPUP_TRAINS_AMOUNT: usize = 1;
 const POPUP_AMOUNT_OF_PEOPLE: usize = 2;
-const POPUP_STATION_CAPACITY: usize = 3;
-const POPUP_LINE_HANDLER: usize = 4;
+const POPUP_LINE_HANDLER: usize = 3;
 const POPUP_STATION_BUTTON: usize = 8;
 
 pub const OPACITY_LEVEL_MAIN: f32 = 0.8;
@@ -459,8 +458,8 @@ impl PopupMenu {
                                                             .forward_speed(20.0)
                                                             .backward_speed(4.0),
                                                         UiColor::new(vec![
-                                                            (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
-                                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+                                                            (UiBase::id(), Color::WHITE),
+                                                            (UiHover::id(), METRO_LIGHT_BLUE_COLOR),
                                                         ]),
                                                         UiTextSize::from(Rh(65.)),
                                                         Text2d::new(i),
