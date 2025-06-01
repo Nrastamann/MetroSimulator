@@ -54,12 +54,12 @@ struct TrainStop {
 }
 
 impl Train {
-    fn new(line: usize) -> Self {
+    fn new(line: usize, direction: Direction) -> Self {
         Self {
             line,
             current: 0,
             passenger_ids: vec![],
-            direction: Direction::Forwards,
+            direction: direction,
             last_stop_time: Duration::from_millis(0),
         }
     }
@@ -81,18 +81,25 @@ fn spawn_train(
             println!("NO TRAIN FOR YOU");
             return;
         }
+
         let position = ev.station;
 
         let mesh = meshes.add(Rectangle::new(36., 16.));
         let material = materials.add(line.color);
-
+        let mut direction: Direction = Direction::Forwards;
+        
+        if line.stations.back().unwrap().position == position{
+            println!("Got there");
+            direction = Direction::Backwards;
+        }  
+        
         commands
             .spawn((
                 StateScoped(GameState::InGame),
                 Mesh2d(mesh),
                 MeshMaterial2d(material),
                 Transform::from_translation(Vec3::new(position.0 as f32, position.1 as f32, 1.0)),
-                Train::new(ev.line),
+                Train::new(ev.line, direction),
             ))
             .with_child((Text2d::new("0"),));
     }
