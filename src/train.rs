@@ -89,12 +89,12 @@ fn spawn_train(
         let mesh = meshes.add(Rectangle::new(36., 16.));
         let material = materials.add(line.color);
         let mut direction: Direction = Direction::Forwards;
-        
-        if line.stations.back().unwrap().position == position{
+
+        if line.stations.back().unwrap().position == position {
             println!("Got there");
             direction = Direction::Backwards;
-        }  
-        
+        }
+
         commands
             .spawn((
                 StateScoped(GameState::InGame),
