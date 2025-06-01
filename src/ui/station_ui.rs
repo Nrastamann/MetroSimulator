@@ -23,7 +23,8 @@ pub const BORDER_WIDTH: f32 = 96.;
 const POPUP_NAME: usize = 0;
 const POPUP_TRAINS_AMOUNT: usize = 1;
 const POPUP_AMOUNT_OF_PEOPLE: usize = 2;
-const POPUP_LINE_HANDLER: usize = 3;
+const POPUP_STATION_CAPACITY: usize = 3;
+const POPUP_LINE_HANDLER: usize = 4;
 const POPUP_STATION_BUTTON: usize = 8;
 
 pub const OPACITY_LEVEL_MAIN: f32 = 0.8;
@@ -146,8 +147,8 @@ impl PopupMenu {
                     UiLayout::window().rl_size(100., 100.).pack(),
                     Sprite{image: asset_server.load(
                         "button_symetric_sliced.png",
-                        
                     ),
+                    color: METRO_LIGHT_BLUE_COLOR,//.with_alpha(OPACITY_LEVEL_HIGHEST),
                     image_mode: SpriteImageMode::Sliced(TextureSlicer { border: BorderRect::square(32.0), ..default() }), 
                     ..default()},
                 ))
@@ -163,8 +164,6 @@ impl PopupMenu {
                             .y(Rl(BORDER_WIDTH / POPUP_HEIGHT))
                             .x(Rl(BORDER_WIDTH / POPUP_WIDTH))
                             .pack(),
-                        Sprite::default(),
-                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         popup_textboxes.entities.push(
@@ -175,6 +174,7 @@ impl PopupMenu {
                                     //37.5
                                     .anchor_center()
                                     .pack(),
+//                                UiColor::from(Color::WHITE.with_alpha(0.8)),
 //                                UiColor::from(Color::WHITE.with_alpha(0.8)),
                                 UiTextSize::from(Rh(100.)),
                                 Text2d::new("sample_txt"),
@@ -201,8 +201,8 @@ impl PopupMenu {
                                 80. - 2. * BORDER_WIDTH / POPUP_HEIGHT,
                             )))
                             .pack(),
-                        Sprite::default(),
-                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+//                        Sprite::default(),
+//                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         ui.spawn((
@@ -285,15 +285,15 @@ impl PopupMenu {
                                 80. - BORDER_WIDTH / POPUP_HEIGHT * 2.,
                             )))
                             .pack(),
-                        Sprite::default(),
-                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+//                        Sprite::default(),
+//                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                     ))
                     .with_children(|ui| {
                         ui.spawn((
                             Name::new("Current lines block"),
                             UiLayout::window().size(Rl((100., 70.))).pack(),
-                            UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
-                            Sprite::default(),
+//                            UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+//                            Sprite::default(),
                         ))
                         .with_children(|ui| {
                             let mut height_off = 0.;
@@ -307,8 +307,8 @@ impl PopupMenu {
                                             .rl_pos(0., height_off)
                                             .pack(),
                                         LineHandlerFlag { line_id: i },
-                                        Sprite::default(),
-                                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+//                                        Sprite::default(),
+//                                        UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
                                         Visibility::Hidden,
                                     ))
                                     .with_children(|ui| {
@@ -317,6 +317,7 @@ impl PopupMenu {
                                             ui.spawn((
                                                 Name::new("line name"),
                                                 UiLayout::window().anchor_center().pack(),
+                                                UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
                                                 UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
                                                 UiTextSize::from(Rh(100.)),
                                                 Text2d::new(text),
@@ -344,7 +345,11 @@ impl PopupMenu {
                                             if !lines_handler_q.get_mut(clck.target).is_ok(){
                                                 return;
                                             }
+                                            if !lines_handler_q.get_mut(clck.target).is_ok(){
+                                                return;
+                                            }
                                             root.picked_line = lines_handler_q
+                                                .get_mut(clck.target).unwrap()//???? crashes there sometimes
                                                 .get_mut(clck.target).unwrap()//???? crashes there sometimes
                                                 .line_id;
                                             redraw_lines_ev.send(RedrawPickedLineEvent {
@@ -374,12 +379,13 @@ impl PopupMenu {
                                         .size(Rl((100., 100.)))
                                         .pack(),
 //                                    Sprite::default(),
+//                                    Sprite::default(),
                                     UiHover::new().forward_speed(20.0).backward_speed(4.0),
-                                    //                                    UiColor::from(Color::BLACK),
-                                    UiColor::new(vec![
+//                                    UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
+/*                                    UiColor::new(vec![
                                         (UiBase::id(), Color::WHITE.with_alpha(0.2)),
                                         (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(0.2)),
-                                    ])
+                                    ])*/
                                 ))
                                 .with_children(|ui| {
                                     ui.spawn((
@@ -434,11 +440,14 @@ impl PopupMenu {
                                             Name::new("Button"),
                                             UiLayout::window().full().pack(),
 //                                            Sprite::default(),
+//                                            Sprite::default(),
                                             UiHover::new().forward_speed(20.0).backward_speed(4.0),
-                                            UiColor::new(vec![
-                                                (UiBase::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST)),
+//                                            UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST))
+/*                                            UiColor::new(vec![
+                                                (UiBase::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(0.0)),
                                                 (UiHover::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
                                             ]),
+*/                                        ))
 */                                        ))
                                         .with_children(
                                             |ui| {
@@ -587,6 +596,7 @@ fn redraw_lines_menu(
     mut metro: ResMut<Metro>,
     mut line_handlers_q: Query<
         (&mut LineHandlerFlag, &mut Children),
+        (&mut LineHandlerFlag, &mut Children),
         Without<Text2d>,
     >,
     text_references: Res<TextboxResource>,
@@ -595,12 +605,12 @@ fn redraw_lines_menu(
         let Ok(menu) = root.get_single_mut() else {
             panic!("Error: Popup is not founded");
         };
-        for (mut color, _previous_handler, child_prev) in line_handlers_q.iter_mut() {
-            *color = UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST));
+        for (_previous_handler, child_prev) in line_handlers_q.iter_mut() {
+//            *color = UiColor::from(METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_HIGHEST));
 
             *text_query
                 .get_mut(*child_prev.iter().next().unwrap())
-                .unwrap() = UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST));
+                .unwrap() = UiColor::from(Color::WHITE);
         }
         /*
                 let (mut color, _previous_handler, child_prev) = line_handlers_q
@@ -614,7 +624,9 @@ fn redraw_lines_menu(
                     .unwrap() = UiColor::from(Color::WHITE);
         */
         let (_new_handler, child_now) = line_handlers_q
+        let (_new_handler, child_now) = line_handlers_q
             .iter_mut()
+            .filter(|(line_numb, _)| line_numb.line_id == ev.picked_line_now)
             .filter(|(line_numb, _)| line_numb.line_id == ev.picked_line_now)
             .next()
             .unwrap();
@@ -627,20 +639,13 @@ fn redraw_lines_menu(
             bg_color.hue -= 180.;
         }
 
-        *color_new = UiColor::from(Color::srgba(0.2,0.2,0.2,0.6));
+        // *color_new = UiColor::from(Color::srgba(0.2,0.2,0.2,0.6));
 
         *text_query
             .get_mut(*child_now.iter().next().unwrap())
-            .unwrap() = UiColor::from(Color::WHITE);
+            .unwrap() = UiColor::from(Color::BLACK);
 
         let (mut button_press, button_child) = button_q.get_single_mut().unwrap();
-
-        *ui_color_button_q
-            .get_mut(*button_child.iter().next().unwrap())
-            .unwrap() = UiColor::new(vec![
-            (UiBase::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_MAIN)),
-            (UiHover::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
-        ]);
 
         *text_query
             .get_mut(text_references.entities[POPUP_STATION_BUTTON])
@@ -666,13 +671,6 @@ fn redraw_lines_menu(
         if !(*line.stations.front().unwrap() == popup_station)
             && !(*line.stations.back().unwrap() == popup_station)
         {
-            *ui_color_button_q
-                .get_mut(*button_child.iter().next().unwrap())
-                .unwrap() = UiColor::new(vec![
-                (UiBase::id(), Color::hsva(0., 0., 74., 0.2)),
-                (UiHover::id(), Color::hsva(0., 0., 74., 0.2)),
-            ]);
-
             *text_query
                 .get_mut(text_references.entities[POPUP_STATION_BUTTON])
                 .unwrap() = UiColor::new(vec![
