@@ -328,7 +328,7 @@ fn setup(asset_server: Res<AssetServer>, mut commands: Commands, settings: Res<S
         Soundtrack,
         PlaybackSettings {
             mode: bevy::audio::PlaybackMode::Despawn,
-            volume: Volume::new(0.8 * settings.music_volume),
+            volume: Volume::new(settings.music_volume),
             ..default()
         },
     ));

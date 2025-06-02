@@ -165,7 +165,7 @@ fn change_settings(
             }
         }
         for mut volume in music_q.iter_mut() {
-            volume.set_volume(1. * settings.music_volume);
+            volume.set_volume(1. - settings.music_volume);
         }
 
     }
