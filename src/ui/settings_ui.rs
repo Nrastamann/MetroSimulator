@@ -1,7 +1,9 @@
+use std::time::Duration;
+
 use crate::{
     audio::ChangeTrackEvent,
     cursor::CursorPosition,
-    settings::{ChangeSettingEvent, SettingsType},
+    settings::{ChangeSettingEvent, Settings, SettingsType},
     GameState,
 };
 use bevy::prelude::*;
@@ -31,11 +33,12 @@ pub struct ButtonFunction(usize);
 impl Plugin for SettingsUIPlugin {
     fn build(&self, app: &mut App) {
         app.add_event::<CalculateSliderEvent>();
+        app.init_resource::<TimerForRedraw>();
         app.add_event::<RedrawSlidersEvent>();
         app.add_systems(OnEnter(GameState::Settings), SettingsUI::spawn);
         app.add_systems(
             Update,
-            (exit_hotkey, move_slider, locate_slider, recalculate_sliders)
+            (exit_hotkey, move_slider, redraw_from_values, locate_slider, recalculate_sliders, timer_tick)
                 .run_if(in_state(GameState::Settings)),
         );
     }
@@ -71,10 +74,21 @@ impl Default for Slider {
     }
 }
 
+#[derive(Resource)]
+pub struct TimerForRedraw{
+    timer: Timer
+}
+impl Default for TimerForRedraw{
+    fn default() -> Self {
+        Self { timer: Timer::new(Duration::from_millis(250), TimerMode::Once) }
+    }
+}
+
+
 #[derive(Component)]
 pub struct SettingsUI;
 impl SettingsUI {
-    fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
+    fn spawn(mut commands: Commands, asset_server: Res<AssetServer>, mut redraw_ev: EventWriter<RedrawSlidersEvent>,) {
         commands
             .spawn((UiLayoutRoot::new_2d(), UiFetchFromCamera::<0>, SettingsUI))
             .with_children(|ui| {
@@ -249,7 +263,7 @@ impl SettingsUI {
                                         (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_BLUR)),
                                         (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_BLUR)),
                                     ]),
-                                    UiHover::new().forward_speed(20.0).backward_speed(4.0),
+//                                    UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                     ButtonFunction(i),
                                 ));
                                 button_e.with_children(|ui|{
@@ -260,7 +274,7 @@ impl SettingsUI {
                                             (UiBase::id(), Color::BLACK),
                                             (UiHover::id(), Color::WHITE),
                                         ]),
-                                        UiHover::new().forward_speed(20.0).backward_speed(4.0),
+//                                        UiHover::new().forward_speed(20.0).backward_speed(4.0),
                                         UiTextSize::from(Rh(80.)),
                                         Text2d::new(text.to_string()),
                                         TextFont {
@@ -273,8 +287,8 @@ impl SettingsUI {
                                     ));
                                 });
                                 button_e
-                                .observe(hover_set::<Pointer<Over>, true>)
-                                .observe(hover_set::<Pointer<Out>, false>)
+//                                .observe(hover_set::<Pointer<Over>, true>)
+//                                .observe(hover_set::<Pointer<Out>, false>)
                                 .observe(|click: Trigger<Pointer<Click>>, mut button_q: Query<&ButtonFunction>,mut change_settings_ev: EventWriter<ChangeSettingEvent>|{
                                     if button_q.get_mut(click.target).is_ok(){
                                         match button_q.get_mut(click.target).unwrap().0{
@@ -295,11 +309,50 @@ impl SettingsUI {
                     });
                 });
             });
+            redraw_ev.send(RedrawSlidersEvent);
+    }
+}
+
+fn timer_tick(time: Res<Time>,mut timer: ResMut<TimerForRedraw>,mut redraw_ev: EventWriter<RedrawSlidersEvent>){
+    timer.timer.tick(time.delta());
+    if timer.timer.just_finished(){
+        redraw_ev.send(RedrawSlidersEvent);
     }
 }
 
 #[derive(Event)]
 pub struct RedrawSlidersEvent;
+
+fn redraw_from_values(mut redraw_ev: EventReader<RedrawSlidersEvent>,settings: Res<Settings>,
+    mut slider_q: Query<(&mut Transform, &GlobalTransform, &Parent, &mut Slider)>,
+){
+    for _ev in redraw_ev.read(){
+        println!("RUST POBEEDA");
+        for (mut transform, transform_g, parent, slider) in slider_q.iter_mut(){
+            let ratio;
+            match slider.setting_type {
+                SettingsType::MusicVolume =>{
+                    ratio = settings.music_volume;
+                }
+                SettingsType::SFXMetroVolume =>{
+                    ratio = settings.metro_sfx_volume;
+                }
+                _ => {
+                    ratio = settings.sfx_volume;
+                }
+            }
+            println!("RUST what {}", transform.translation.x);
+            let x_new;
+            if ratio > 0.5{
+                x_new = 138. * ratio;
+            }else{
+                x_new = -138. * (1. - ratio);
+            }
+            transform.translation.x = x_new;
+            println!("RUST who {}", transform.translation.x);
+        }
+    }
+}
 
 #[derive(Event)]
 pub struct CalculateSliderEvent;
@@ -377,8 +430,8 @@ fn move_slider(
         let (parent_pos, dimension) = global_t.get(**slider_t.as_ref().unwrap().3).unwrap();
         println!(
             "Parent pos - {} {}, cursor - {} {} ",
-            parent_pos.translation().x,
-            parent_pos.translation().y,
+            slider_t.as_ref().unwrap().0.translation.x,
+            slider_t.as_ref().unwrap().0.translation.y,
             cursor_position.0.x,
             cursor_position.0.y
         );
