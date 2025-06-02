@@ -1,4 +1,5 @@
-use crate::{audio::Soundtrack, ui::Slider, GameState};
+use crate::ui::Slider;
+use crate::{audio::Soundtrack, GameState};
 use bevy::prelude::*;
 use std::fs::File;
 use std::io::{BufRead, BufReader, Read, Write};
@@ -73,6 +74,8 @@ impl Default for Settings {
 fn write_to_file(settings: Res<Settings>, mut save_settings: EventReader<SaveSettingEvent>) {
     for _ev in save_settings.read() {
         let mut file = File::create("Settings.txt").expect("Creation failed!");
+        
+
 
         file.write(
             (settings.turn_on_sfx.to_string()
