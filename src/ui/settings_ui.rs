@@ -1,4 +1,9 @@
-use crate::{audio::ChangeTrackEvent, cursor::CursorPosition, settings::{ChangeSettingEvent, SettingsType}, GameState};
+use crate::{
+    audio::ChangeTrackEvent,
+    cursor::CursorPosition,
+    settings::{ChangeSettingEvent, SettingsType},
+    GameState,
+};
 use bevy::prelude::*;
 use bevy_lunex::*;
 const SETTINGS_LEN: usize = 5;
@@ -25,10 +30,13 @@ pub struct ButtonFunction(usize);
 
 impl Plugin for SettingsUIPlugin {
     fn build(&self, app: &mut App) {
+        app.add_event::<CalculateSliderEvent>();
+        app.add_event::<RedrawSlidersEvent>();
         app.add_systems(OnEnter(GameState::Settings), SettingsUI::spawn);
         app.add_systems(
             Update,
-            (exit_hotkey, move_slider, locate_slider).run_if(in_state(GameState::Settings)),
+            (exit_hotkey, move_slider, locate_slider, recalculate_sliders)
+                .run_if(in_state(GameState::Settings)),
         );
     }
 }
@@ -267,13 +275,17 @@ impl SettingsUI {
                                 .observe(hover_set::<Pointer<Over>, true>)
                                 .observe(hover_set::<Pointer<Out>, false>)
                                 .observe(|click: Trigger<Pointer<Click>>, mut button_q: Query<&ButtonFunction>,mut change_settings_ev: EventWriter<ChangeSettingEvent>|{
-                                    match button_q.get_mut(click.target).unwrap().0{
+                                    if button_q.get_mut(click.target).is_ok(){
+                                        match button_q.get_mut(click.target).unwrap().0{
                                         0 =>{
                                             change_settings_ev.send(ChangeSettingEvent);
                                         }
                                         _ =>{
-                                            //Сбросить до заводских
+                                            
                                         }
+                                    }
+                                    }else{
+                                        println!("Error");
                                     }
                                 });
                             }
@@ -285,15 +297,51 @@ impl SettingsUI {
     }
 }
 
+#[derive(Event)]
+pub struct RedrawSlidersEvent;
+
+#[derive(Event)]
+pub struct CalculateSliderEvent;
+
+fn recalculate_sliders(
+    mut calculate_slider_ev: EventReader<CalculateSliderEvent>,
+    mut slider_q: Query<(&GlobalTransform, &Parent, &mut Slider)>,
+    mut global_transform_q: Query<(&GlobalTransform, &Dimension), Without<Slider>>,
+) {
+    for _ev in calculate_slider_ev.read() {
+        for (global_t, parent, mut slider) in slider_q.iter_mut(){
+            let (pos,size) = global_transform_q.get_mut(**parent).unwrap();
+            //220., 497
+
+            let mut ratio = (global_t.translation().x - 497.).abs() / (497.-220.);
+
+            if ratio <= 0.01{
+                ratio = 0.0;
+            }
+
+            if ratio >= 0.99{
+                ratio = 1.;
+            }
+
+            slider.value = ratio;
+
+            println!("pos - {}", global_t.translation().x);
+            println!("RATIO - {}", ratio);
+        }
+    }
+}
+
 fn locate_slider(
     mut slider_q: Query<(&GlobalTransform, &mut Slider)>,
     cursor_position: Res<CursorPosition>,
     mouse: ResMut<ButtonInput<MouseButton>>,
+    mut calculate_slider_ev: EventWriter<CalculateSliderEvent>,
 ) {
     if mouse.just_released(MouseButton::Left) {
         for mut i in slider_q.iter_mut() {
             i.1.picked = false;
         }
+        calculate_slider_ev.send(CalculateSliderEvent);
     }
     if slider_q
         .iter_mut()
