@@ -268,6 +268,7 @@ impl SettingsUI {
                                             font_size: 96.,
                                             ..default()
                                         },
+                                        PickingBehavior::IGNORE,
 
                                     ));
                                 });
@@ -324,12 +325,10 @@ fn recalculate_sliders(
             }
 
             slider.value = ratio;
-
-            println!("pos - {}", global_t.translation().x);
-            println!("RATIO - {}", ratio);
         }
     }
 }
+
 
 fn locate_slider(
     mut slider_q: Query<(&GlobalTransform, &mut Slider)>,
