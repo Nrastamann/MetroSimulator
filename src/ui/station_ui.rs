@@ -326,6 +326,7 @@ impl PopupMenu {
                                                     ..default()
                                                 },
                                                 Visibility::Inherited,
+                                                PickingBehavior::IGNORE,
                                             ))
                                             .id(),
                                         );
