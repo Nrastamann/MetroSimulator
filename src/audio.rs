@@ -243,7 +243,7 @@ fn play_sfx(
 ) {
     for ev in play_sfx_ev.read() {
         let sfx_num;
-        if !settings.turn_on_sfx{
+        if !settings.turn_on_sfx {
             return;
         }
         match ev.sfx_to_play {
@@ -259,7 +259,7 @@ fn play_sfx(
             SFX,
             PlaybackSettings {
                 mode: bevy::audio::PlaybackMode::Despawn,
-                volume: Volume::new(0.5),
+                volume: Volume::new(1. - settings.sfx_volume),
                 ..default()
             },
         ));
@@ -274,7 +274,7 @@ fn play_metro_sfx(
     settings: Res<Settings>,
 ) {
     for _ev in play_metro_sfx_event.read() {
-        if !settings.turn_on_metro_sfx{
+        if !settings.turn_on_metro_sfx {
             return;
         }
         for music_e in music_q.iter() {
@@ -288,6 +288,7 @@ fn play_metro_sfx(
             ),
             MetroSounds,
             PlaybackSettings {
+                volume: Volume::new(1. - settings.metro_sfx_volume),
                 mode: bevy::audio::PlaybackMode::Despawn,
                 ..default()
             },
@@ -307,7 +308,7 @@ fn empty_track(
     }
 }
 
-fn setup(asset_server: Res<AssetServer>, mut commands: Commands) {
+fn setup(asset_server: Res<AssetServer>, mut commands: Commands, settings: Res<Settings>) {
     let mut track_list: Vec<Handle<AudioSource>> = vec![];
     let mut sfx_list: Vec<Handle<AudioSource>> = vec![];
     let mut sfx_metro_list: Vec<Handle<AudioSource>> = vec![];
@@ -327,7 +328,7 @@ fn setup(asset_server: Res<AssetServer>, mut commands: Commands) {
         Soundtrack,
         PlaybackSettings {
             mode: bevy::audio::PlaybackMode::Despawn,
-            volume: Volume::new(0.8),
+            volume: Volume::new(0.8 * settings.music_volume),
             ..default()
         },
     ));
@@ -379,53 +380,54 @@ fn change_track(
     mut music_player: ResMut<MusicPlayer>,
     settings: Res<Settings>,
 ) {
-    for ev in change_track_ev.read() {        
-        if ev.track.is_some(){
-            for music in soundtrack.iter(){
+    for ev in change_track_ev.read() {
+        if ev.track.is_some() {
+            for music in soundtrack.iter() {
                 commands.entity(music).despawn();
             }
-            if ev.track.unwrap() >= MUSIC_NAMES.len(){
-                for i in 0..music_player.order.len(){
-                    if music_player.order[i] == music_player.current_composition{
-                        match ev.track.unwrap(){
-                            usize::MAX =>{
-                                if i == 0{
-                                    music_player.current_composition = music_player.order[music_player.order.len() - 1];
+            if ev.track.unwrap() >= MUSIC_NAMES.len() {
+                for i in 0..music_player.order.len() {
+                    if music_player.order[i] == music_player.current_composition {
+                        match ev.track.unwrap() {
+                            usize::MAX => {
+                                if i == 0 {
+                                    music_player.current_composition =
+                                        music_player.order[music_player.order.len() - 1];
                                     break;
                                 }
                                 music_player.current_composition = music_player.order[i - 1];
-                                break;        
+                                break;
                             }
-                            _ =>{
-                                if i >= MUSIC_NAMES.len() - 1{
+                            _ => {
+                                if i >= MUSIC_NAMES.len() - 1 {
                                     music_player.current_composition = music_player.order[0];
                                     break;
                                 }
                                 music_player.current_composition = music_player.order[i + 1];
                                 break;
-        
                             }
                         }
                     }
+                }
+            } else {
+                music_player.current_composition = ev.track.unwrap();
             }
-        }else{
-            music_player.current_composition = ev.track.unwrap();
-        }
             change_song_name.send(ChangeSongNameEvent);
             commands.spawn((
                 AudioPlayer::new(
-                    music_player.track_list[music_player.order[music_player.current_composition]].clone(),
+                    music_player.track_list[music_player.order[music_player.current_composition]]
+                        .clone(),
                 ),
                 Soundtrack,
                 PlaybackSettings {
                     mode: bevy::audio::PlaybackMode::Despawn,
-                    volume: Volume::new(1. * settings.music_volume),
+                    volume: Volume::new(1. - (settings.music_volume)),
                     ..default()
                 },
             ));
             return;
-        } 
-        
+        }
+
         for music in soundtrack.iter() {
             commands.entity(music).insert(FadeOut(0.0));
             println!("fade");
@@ -454,7 +456,7 @@ fn change_track(
                     Soundtrack,
                     PlaybackSettings {
                         mode: bevy::audio::PlaybackMode::Despawn,
-                        volume: Volume::new(1. * settings.music_volume),
+                        volume: Volume::new(1. - (settings.music_volume)),
                         ..default()
                     },
                 ));
@@ -467,7 +469,7 @@ fn change_track(
                     Soundtrack,
                     PlaybackSettings {
                         mode: bevy::audio::PlaybackMode::Despawn,
-                        volume: Volume::new(0.8 * settings.music_volume),
+                        volume: Volume::new(1. - (1. - settings.music_volume)),
                         ..default()
                     },
                 ));
