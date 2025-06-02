@@ -88,7 +88,7 @@ impl Default for TimerForRedraw{
 #[derive(Component)]
 pub struct SettingsUI;
 impl SettingsUI {
-    fn spawn(mut commands: Commands, asset_server: Res<AssetServer>, mut redraw_ev: EventWriter<RedrawSlidersEvent>,) {
+    fn spawn(mut commands: Commands, asset_server: Res<AssetServer>, ) {
         commands
             .spawn((UiLayoutRoot::new_2d(), UiFetchFromCamera::<0>, SettingsUI))
             .with_children(|ui| {
@@ -289,14 +289,20 @@ impl SettingsUI {
                                 button_e
 //                                .observe(hover_set::<Pointer<Over>, true>)
 //                                .observe(hover_set::<Pointer<Out>, false>)
-                                .observe(|click: Trigger<Pointer<Click>>, mut button_q: Query<&ButtonFunction>,mut change_settings_ev: EventWriter<ChangeSettingEvent>|{
+                                .observe(|click: Trigger<Pointer<Click>>, mut settings: ResMut<Settings>,mut button_q: Query<&ButtonFunction>,mut redraw_ev: EventWriter<RedrawSlidersEvent>,mut change_settings_ev: EventWriter<ChangeSettingEvent>|{
                                     if button_q.get_mut(click.target).is_ok(){
                                         match button_q.get_mut(click.target).unwrap().0{
                                         0 =>{
                                             change_settings_ev.send(ChangeSettingEvent);
                                         }
                                         _ =>{
+                                            settings.metro_sfx_volume = 1.0;
+                                            settings.music_volume = 1.0;
+                                            settings.sfx_volume = 1.0;
+                                            settings.turn_on_metro_sfx = true;
+                                            settings.turn_on_sfx = true;
                                             
+                                            redraw_ev.send(RedrawSlidersEvent);
                                         }
                                     }
                                     }else{
@@ -309,7 +315,6 @@ impl SettingsUI {
                     });
                 });
             });
-            redraw_ev.send(RedrawSlidersEvent);
     }
 }
 
@@ -324,10 +329,28 @@ fn timer_tick(time: Res<Time>,mut timer: ResMut<TimerForRedraw>,mut redraw_ev: E
 pub struct RedrawSlidersEvent;
 
 fn redraw_from_values(mut redraw_ev: EventReader<RedrawSlidersEvent>,settings: Res<Settings>,
-    mut slider_q: Query<(&mut Transform, &GlobalTransform, &Parent, &mut Slider)>,
+    mut slider_q: Query<(&mut Transform, &GlobalTransform, &Parent, &mut Slider), Without<CheckBox>>,
+    mut checkboxes: Query<(&mut Sprite, &CheckBox),Without<Slider>>,
+    asset_server: Res<AssetServer>,
 ){
     for _ev in redraw_ev.read(){
         println!("RUST POBEEDA");
+        for (mut sprite, checkbox) in checkboxes.iter_mut(){
+            if checkbox.setting_type == SettingsType::TurnOfMetroSFX {
+                if settings.turn_on_metro_sfx{
+                    sprite.image = asset_server.load("checkbox_2.png");
+                    continue;    
+                }
+                sprite.image = asset_server.load("checkbox_1.png");
+                continue;
+            }
+            if settings.turn_on_sfx{
+                sprite.image = asset_server.load("checkbox_2.png");                
+                continue;
+            }
+            sprite.image = asset_server.load("checkbox_1.png");
+        }
+
         for (mut transform, transform_g, parent, slider) in slider_q.iter_mut(){
             let ratio;
             match slider.setting_type {

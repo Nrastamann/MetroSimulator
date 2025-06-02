@@ -24,6 +24,7 @@ impl Plugin for SettingsPlugin {
     }
 }
 
+#[derive(PartialEq)]
 pub enum SettingsType {
     TurnOfSFX = 0,
     TurnOfMetroSFX,
