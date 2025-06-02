@@ -9,7 +9,6 @@ use crate::{
 use super::{BuyTrainTutorial, METRO_LIGHT_BLUE_COLOR, UI_FONT};
 
 pub const RMB_STATS: [&str; 2] = ["Поезда", "Люди на станции"];
-pub const RMB_STATS: [&str; 2] = ["Поезда", "Люди на станции"];
 pub const RMB_BUTTONS: [&str; 2] = ["Новая станция", "Новая линия"];
 
 pub const POPUP_WIDTH: f32 = 464.;
@@ -174,7 +173,6 @@ impl PopupMenu {
                                     .anchor_center()
                                     .pack(),
 //                                UiColor::from(Color::WHITE.with_alpha(0.8)),
-//                                UiColor::from(Color::WHITE.with_alpha(0.8)),
                                 UiTextSize::from(Rh(100.)),
                                 Text2d::new("sample_txt"),
                                 TextFont {
@@ -317,7 +315,6 @@ impl PopupMenu {
                                                 Name::new("line name"),
                                                 UiLayout::window().anchor_center().pack(),
                                                 UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
-                                                UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
                                                 UiTextSize::from(Rh(100.)),
                                                 Text2d::new(text),
                                                 TextFont {
@@ -345,11 +342,7 @@ impl PopupMenu {
                                             if !lines_handler_q.get_mut(clck.target).is_ok(){
                                                 return;
                                             }
-                                            if !lines_handler_q.get_mut(clck.target).is_ok(){
-                                                return;
-                                            }
                                             root.picked_line = lines_handler_q
-                                                .get_mut(clck.target).unwrap()//???? crashes there sometimes
                                                 .get_mut(clck.target).unwrap()//???? crashes there sometimes
                                                 .line_id;
                                             redraw_lines_ev.send(RedrawPickedLineEvent {
@@ -378,7 +371,6 @@ impl PopupMenu {
                                         .rl_pos(0., 0.)
                                         .size(Rl((100., 100.)))
                                         .pack(),
-//                                    Sprite::default(),
 //                                    Sprite::default(),
                                     UiHover::new().forward_speed(20.0).backward_speed(4.0),
 //                                    UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
@@ -440,14 +432,12 @@ impl PopupMenu {
                                             Name::new("Button"),
                                             UiLayout::window().full().pack(),
 //                                            Sprite::default(),
-//                                            Sprite::default(),
                                             UiHover::new().forward_speed(20.0).backward_speed(4.0),
 //                                            UiColor::from(Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST))
 /*                                            UiColor::new(vec![
                                                 (UiBase::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(0.0)),
                                                 (UiHover::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_HIGHEST)),
                                             ]),
-*/                                        ))
 */                                        ))
                                         .with_children(
                                             |ui| {
@@ -596,7 +586,6 @@ fn redraw_lines_menu(
     mut metro: ResMut<Metro>,
     mut line_handlers_q: Query<
         (&mut LineHandlerFlag, &mut Children),
-        (&mut LineHandlerFlag, &mut Children),
         Without<Text2d>,
     >,
     text_references: Res<TextboxResource>,
@@ -624,9 +613,7 @@ fn redraw_lines_menu(
                     .unwrap() = UiColor::from(Color::WHITE);
         */
         let (_new_handler, child_now) = line_handlers_q
-        let (_new_handler, child_now) = line_handlers_q
             .iter_mut()
-            .filter(|(line_numb, _)| line_numb.line_id == ev.picked_line_now)
             .filter(|(line_numb, _)| line_numb.line_id == ev.picked_line_now)
             .next()
             .unwrap();
@@ -650,8 +637,6 @@ fn redraw_lines_menu(
         *text_query
             .get_mut(text_references.entities[POPUP_STATION_BUTTON])
             .unwrap() = UiColor::new(vec![
-            (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
-            (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_MAIN)),
             (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_MAIN)),
             (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_MAIN)),
         ]);

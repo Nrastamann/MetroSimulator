@@ -3,7 +3,6 @@ use bevy::{audio::Volume, prelude::*};
 use bevy_lunex::cosmic_text::Change;
 use rand::{rng, Rng};
 use std::{time::Duration, usize};
-use std::{time::Duration, usize};
 pub struct AudioPlugin;
 
 pub const MUSIC_NAMES: [&str; 8] = [
@@ -377,7 +376,6 @@ fn change_track(
     mut change_track_ev: EventReader<ChangeTrackEvent>,
     game_state: Res<State<GameState>>,
     mut change_song_name: EventWriter<ChangeSongNameEvent>,
-    mut change_song_name: EventWriter<ChangeSongNameEvent>,
     mut music_player: ResMut<MusicPlayer>,
     settings: Res<Settings>,
 ) {
@@ -411,39 +409,11 @@ fn change_track(
                     }
             }
         }else{
-            if ev.track.unwrap() >= MUSIC_NAMES.len(){
-                for i in 0..music_player.order.len(){
-                    if music_player.order[i] == music_player.current_composition{
-                        match ev.track.unwrap(){
-                            usize::MAX =>{
-                                if i == 0{
-                                    music_player.current_composition = music_player.order[music_player.order.len() - 1];
-                                    break;
-                                }
-                                music_player.current_composition = music_player.order[i - 1];
-                                break;        
-                            }
-                            _ =>{
-                                if i >= MUSIC_NAMES.len() - 1{
-                                    music_player.current_composition = music_player.order[0];
-                                    break;
-                                }
-                                music_player.current_composition = music_player.order[i + 1];
-                                break;
-        
-                            }
-                        }
-                    }
-            }
-        }else{
             music_player.current_composition = ev.track.unwrap();
-        }
-            change_song_name.send(ChangeSongNameEvent);
         }
             change_song_name.send(ChangeSongNameEvent);
             commands.spawn((
                 AudioPlayer::new(
-                    music_player.track_list[music_player.order[music_player.current_composition]].clone(),
                     music_player.track_list[music_player.order[music_player.current_composition]].clone(),
                 ),
                 Soundtrack,
@@ -504,7 +474,6 @@ fn change_track(
                 //короче, если в меню или в настройках, то надо бы накинуть - громкость? хз
             }
         }
-        change_song_name.send(ChangeSongNameEvent);
         change_song_name.send(ChangeSongNameEvent);
         music_player.current_state = PlayerState::Playing;
     }

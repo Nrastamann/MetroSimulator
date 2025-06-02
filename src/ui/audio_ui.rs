@@ -21,12 +21,10 @@ impl Plugin for AudioUIPlugin {
             .add_event::<HideUIEvent>()
             .add_event::<ShowUIEvent>()
             .add_event::<ChangeSongNameEvent>()
-            .add_event::<ChangeSongNameEvent>()
             .add_event::<PlayerUISpawnEvent>()
             .add_event::<RedrawTracksEvent>();
         app.add_systems(
             Update,
-            (show_player, hide_player, redraw_tracks, hotkey_player,change_song_mini_player).run_if(in_state(GameState::InGame)),
             (show_player, hide_player, redraw_tracks, hotkey_player,change_song_mini_player).run_if(in_state(GameState::InGame)),
         );
         app.add_systems(OnEnter(GameState::InGame), PlayerUI::spawn);
@@ -72,9 +70,6 @@ pub struct PlayerEntities {
 pub struct PlayerType(usize);
 
 #[derive(Component)]
-pub struct PlayerType(usize);
-
-#[derive(Component)]
 pub struct PageNumber(pub usize);
 
 #[derive(Component, Default)]
@@ -82,9 +77,6 @@ pub struct PlayerButton(pub usize);
 
 #[derive(Component)]
 pub struct CurrentTrack;
-
-#[derive(Component)]
-pub struct CurrentTrackSmall;
 
 #[derive(Component)]
 pub struct CurrentTrackSmall;
@@ -98,9 +90,6 @@ pub struct ShowUIEvent;
 #[derive(Event)]
 pub struct ChangeSongNameEvent;
 
-#[derive(Event)]
-pub struct ChangeSongNameEvent;
-
 #[derive(Clone,Copy, PartialEq)]
 pub enum ComponentOrientation{
     Left,
@@ -109,13 +98,8 @@ pub enum ComponentOrientation{
 #[derive(Component,Clone,Copy)]
 pub struct MiniButtons(usize);
 
-#[derive(Component,Clone,Copy)]
-pub struct MiniButtons(usize);
-
 #[derive(Component, Clone, Copy)]
 pub struct Arrow(pub ComponentOrientation);
-
-pub const MINIPLAYER_OFFSET: f32 = 30.;
 
 pub const MINIPLAYER_OFFSET: f32 = 30.;
 
@@ -125,7 +109,6 @@ impl PlayerUI {
     fn spawn(
         mut commands: Commands,
         asset_server: Res<AssetServer>,
-        music_player: Res<MusicPlayer>,
         music_player: Res<MusicPlayer>,
         mut player_entities: ResMut<PlayerEntities>,
     ) {
@@ -242,8 +225,6 @@ impl PlayerUI {
                                 .pack(),
                             UiColor::from(Color::srgba(255., 255., 255., OPACITY_LEVEL_BLUR)),
                             Sprite::default(),
-                            PlayerType(1),
-                            Visibility::Hidden,
                             PlayerType(1),
                             Visibility::Hidden,
                         ))
@@ -572,11 +553,6 @@ fn change_song_mini_player(mut change_song_name_ev: EventReader<ChangeSongNameEv
         name_q.get_single_mut().unwrap().0 = MUSIC_NAMES[music_player.current_composition][..MUSIC_NAMES[music_player.current_composition].len()-4].to_string();
     }
 }
-fn change_song_mini_player(mut change_song_name_ev: EventReader<ChangeSongNameEvent>, music_player: Res<MusicPlayer>, mut name_q: Query<&mut Text2d, With<CurrentTrackSmall>>){
-    for _ in change_song_name_ev.read(){
-        name_q.get_single_mut().unwrap().0 = MUSIC_NAMES[music_player.current_composition][..MUSIC_NAMES[music_player.current_composition].len()-4].to_string();
-    }
-}
 fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>, 
     mut player_buttons: Query<(&Arrow, &mut Visibility),Without<PlayerType>>,
     mut pages_q: Query<(&mut Text2d,&mut PageNumber), (Without<CurrentTrack>,Without<PlayerType>)>,
@@ -658,19 +634,10 @@ fn redraw_tracks(mut redraw_tracks_ev: EventReader<RedrawTracksEvent>,
 
 fn hide_player(
     mut player_q: Query<(&mut Visibility, &PlayerType), Without<Arrow>>,
-    mut player_q: Query<(&mut Visibility, &PlayerType), Without<Arrow>>,
     mut hide_ui_ev: EventReader<HideUIEvent>,
     mut buttons_q: Query<&mut Visibility, (With<Arrow>,Without<UiLayoutRoot>)>,
 ) {
     for _ev in hide_ui_ev.read() {
-        for (mut player_v,_) in player_q.iter_mut(){
-            if *player_v == Visibility::Hidden{
-                *player_v = Visibility::Visible;
-                continue;
-            }
-            *player_v = Visibility::Hidden;
-        }
-        
         for (mut player_v,_) in player_q.iter_mut(){
             if *player_v == Visibility::Hidden{
                 *player_v = Visibility::Visible;
@@ -687,25 +654,11 @@ fn hide_player(
 
 fn show_player(
     mut player_q: Query<&mut Visibility, (With<PlayerType>, Without<Arrow>)>,
-    mut player_q: Query<&mut Visibility, (With<PlayerType>, Without<Arrow>)>,
     mut show_ui_ev: EventReader<ShowUIEvent>,
     mut redraw_tracks_ev: EventWriter<RedrawTracksEvent>, 
     mut buttons_q: Query<&mut Visibility, (With<Arrow>,Without<UiLayoutRoot>, Without<PlayerType>)>,
-    mut buttons_q: Query<&mut Visibility, (With<Arrow>,Without<UiLayoutRoot>, Without<PlayerType>)>,
 ) {
     for _ev in show_ui_ev.read() {
-        for mut player_v in player_q.iter_mut(){
-            if *player_v == Visibility::Hidden{
-                *player_v = Visibility::Visible;
-                continue;
-            }
-            *player_v = Visibility::Hidden;
-        }
-        
-        for mut button in buttons_q.iter_mut(){
-            *button = Visibility::Hidden;
-        }
-
         for mut player_v in player_q.iter_mut(){
             if *player_v == Visibility::Hidden{
                 *player_v = Visibility::Visible;
