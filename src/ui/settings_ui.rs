@@ -1,35 +1,16 @@
-use crate::{audio::ChangeTrackEvent, cursor::CursorPosition, GameState};
+use crate::{audio::ChangeTrackEvent, cursor::CursorPosition, settings::{ChangeSettingEvent, SettingsType}, GameState};
 use bevy::prelude::*;
 use bevy_lunex::*;
 const SETTINGS_LEN: usize = 5;
 const SLIDER_SIZE: f32 = 10.;
 const SETTINGS_NAME: [&str; SETTINGS_LEN] = [
-    "Отключить звуковые эффекты",
-    "Отключить звуки метро",
+    "Звуковые эффекты",
+    "Звуки метро",
     "Громкость музыки",
     "Громкость звуковых эффектов",
     "Громкость звуков метро",
 ];
-pub enum SettingsType {
-    TurnOfSFX = 0,
-    TurnOfMetroSFX,
-    MusicVolume,
-    SFXVolume,
-    SFXMetroVolume,
-}
 
-impl From<usize> for SettingsType {
-    fn from(value: usize) -> Self {
-        match value {
-            _ if value == SettingsType::TurnOfSFX as usize => Self::TurnOfSFX,
-            _ if value == SettingsType::TurnOfMetroSFX as usize => Self::TurnOfMetroSFX,
-            _ if value == SettingsType::MusicVolume as usize => Self::MusicVolume,
-            _ if value == SettingsType::SFXVolume as usize => Self::SFXVolume,
-            _ if value == SettingsType::SFXMetroVolume as usize => Self::SFXMetroVolume,
-            _ => panic!("WRONG VALUE"),
-        }
-    }
-}
 const SETTING_SIZE: f32 = 11.;
 const SETTINGS_OFFSET: f32 = 15.;
 const NAMING_SIZE: f32 = 60.;
@@ -38,12 +19,13 @@ use super::{
     OPACITY_LEVEL_HIGHEST, OPACITY_LEVEL_MAIN, UI_FONT,
 };
 pub struct SettingsUIPlugin;
+
 #[derive(Component)]
-pub struct Flag;
+pub struct ButtonFunction(usize);
 
 impl Plugin for SettingsUIPlugin {
     fn build(&self, app: &mut App) {
-        app.add_systems(OnEnter(GameState::Settings), Settings::spawn);
+        app.add_systems(OnEnter(GameState::Settings), SettingsUI::spawn);
         app.add_systems(
             Update,
             (exit_hotkey, move_slider, locate_slider).run_if(in_state(GameState::Settings)),
@@ -51,26 +33,42 @@ impl Plugin for SettingsUIPlugin {
     }
 }
 #[derive(Component)]
-pub struct Slider {
-    picked: bool,
+pub struct CheckBox {
+    pub pressed: bool,
+    pub setting_type: SettingsType,
 }
-impl Default for Slider {
+
+impl Default for CheckBox {
     fn default() -> Self {
-        Self { picked: false }
+        Self {
+            pressed: true,
+            setting_type: SettingsType::TurnOfMetroSFX,
+        }
     }
 }
 
 #[derive(Component)]
-pub struct Settings;
-impl Settings {
-    fn spawn(
-        mut commands: Commands,
-        asset_server: Res<AssetServer>,
-        mut meshes: ResMut<Assets<Mesh>>,
-        mut materials: ResMut<Assets<ColorMaterial>>,
-    ) {
+pub struct Slider {
+    picked: bool,
+    pub value: f32,
+    pub setting_type: SettingsType,
+}
+impl Default for Slider {
+    fn default() -> Self {
+        Self {
+            picked: false,
+            value: 1.0,
+            setting_type: SettingsType::MusicVolume,
+        }
+    }
+}
+
+#[derive(Component)]
+pub struct SettingsUI;
+impl SettingsUI {
+    fn spawn(mut commands: Commands, asset_server: Res<AssetServer>) {
         commands
-            .spawn((UiLayoutRoot::new_2d(), UiFetchFromCamera::<0>, Settings))
+            .spawn((UiLayoutRoot::new_2d(), UiFetchFromCamera::<0>, SettingsUI))
             .with_children(|ui| {
                 ui.spawn((
                     Name::new("Settings BG"),
@@ -104,7 +102,8 @@ impl Settings {
                                 Name::new("Text part"),
                                 UiLayoutTypeWindow::new()
                                     .anchor_left()
-                                    .rl_size(NAMING_SIZE, 100.)
+                                    .rl_pos(10.,10.)
+                                    .rl_size(NAMING_SIZE, 80.)
                                     .pack(),
                             ))
                             .with_children(|ui| {
@@ -139,58 +138,145 @@ impl Settings {
                                 Name::new("Settings set part"),
                                 UiLayoutTypeWindow::new()
                                     .anchor_left()
+                                    .y(Rl(10.))
                                     .x(Rl(NAMING_SIZE + 10.))
-                                    .rl_size(100. - NAMING_SIZE - 10., 100.)
+                                    .rl_size(100. - NAMING_SIZE - 10., 80.)
                                     .pack(),
                             ))
                             .with_children(|ui| {
                                 let mut settings_offset = 0.;
                                 for i in 0..SETTINGS_LEN {
-                                    match i.into() {
-                                        SettingsType::TurnOfSFX => {}
-                                        _ => {}
-                                    }
-                                    ui.spawn((
-                                        Name::new("A"),
-                                        UiLayoutTypeWindow::new()
-                                            .rl_pos(0., settings_offset)
-                                            .rl_size(100., SETTING_SIZE * 0.8 + 1.)
-                                            .pack(),
-                                        Sprite {
-                                            color: Color::BLACK,
-                                            image: asset_server.load("button_symetric.png"),
-                                            image_mode: SpriteImageMode::Sliced(TextureSlicer {
-                                                border: BorderRect::square(32.0),
-                                                ..default()
-                                            }),
-                                            ..Default::default()
-                                        },
-                                        UiColor::from(Color::BLACK),
-                                    ))
-                                    .with_children(|ui| {
+                                    if i >= SettingsType::MusicVolume as usize {
                                         ui.spawn((
-                                            Name::new("SLIDER ITSELF"),
+                                            Name::new("A"),
                                             UiLayoutTypeWindow::new()
-                                                .rl_pos(100. - SLIDER_SIZE, 0.)
-                                                .rl_size(SLIDER_SIZE, 100.)
+                                                .rl_pos(0., settings_offset)
+                                                .rl_size(100., SETTING_SIZE * 0.8 + 1.)
                                                 .pack(),
                                             Sprite {
                                                 color: Color::BLACK,
                                                 image: asset_server.load("button_symetric.png"),
                                                 image_mode: SpriteImageMode::Sliced(
                                                     TextureSlicer {
-                                                        border: BorderRect::square(8.0),
+                                                        border: BorderRect::square(32.0),
                                                         ..default()
                                                     },
                                                 ),
                                                 ..Default::default()
                                             },
-                                            Slider::default(),
                                             UiColor::from(Color::BLACK),
-                                        ));
-                                    });
+                                        ))
+                                        .with_children(
+                                            |ui| {
+                                                ui.spawn((
+                                                    Name::new("SLIDER ITSELF"),
+                                                    UiLayoutTypeWindow::new()
+                                                        .rl_pos(100. - SLIDER_SIZE, 0.)
+                                                        .rl_size(SLIDER_SIZE, 100.)
+                                                        .pack(),
+                                                    Sprite {
+                                                        color: Color::BLACK,
+                                                        image: asset_server
+                                                            .load("button_symetric.png"),
+                                                        image_mode: SpriteImageMode::Sliced(
+                                                            TextureSlicer {
+                                                                border: BorderRect::square(8.0),
+                                                                ..default()
+                                                            },
+                                                        ),
+                                                        ..Default::default()
+                                                    },
+                                                    Slider {
+                                                        setting_type: i.into(),
+                                                        ..Default::default()
+                                                    },
+                                                    UiColor::from(Color::BLACK),
+                                                ));
+                                            },
+                                        );
+                                    }else{
+                                        ui.spawn((
+                                            Name::new("B"),
+                                            UiLayoutTypeWindow::new()
+                                                .rl_pos(0., settings_offset)
+                                                .rl_size(SETTING_SIZE+10.,SETTING_SIZE)
+                                                .pack(),
+                                            Sprite {
+                                                color: Color::BLACK,
+                                                image: asset_server.load("checkbox_2.png"),
+                                                ..Default::default()
+                                            },
+                                            CheckBox{
+                                                setting_type: i.into(),
+                                                ..default()
+                                            },
+                                        )).observe(|click: Trigger<Pointer<Click>>, asset_server: Res<AssetServer>, mut button_q: Query<(&mut Sprite,&mut CheckBox)>|{
+                                        let (mut sprite, mut checkbox) = button_q.get_mut(click.target).unwrap();
+                                            if checkbox.pressed{
+                                                sprite.image = asset_server.load("checkbox_1.png");
+                                                checkbox.pressed = false;
+                                                return;
+                                            }
+                                            sprite.image = asset_server.load("checkbox_2.png");
+                                            checkbox.pressed = true;
+                                        });
+                                    }
                                     settings_offset += SETTINGS_OFFSET;
                                 }
+                            });
+                            ui.spawn((
+                                Name::new("Button apply"),
+                                UiLayoutTypeWindow::new().anchor_left().rl_pos(0.,90.).rl_size(100.,10.).pack(),
+                            )).with_children(|ui|{
+                                for i in 0..2{
+                                    let mut text = "Сохранить настройки";
+                                    if i == 1{
+                                        text = "Сбросить до начальных";
+                                    }
+                                let mut button_e =ui.spawn((
+                                    Name::new("Button"),
+                                    UiLayoutTypeWindow::new().rl_pos(50. * i as f32, 0.).rl_size(50., 100.).pack(),
+                                    Sprite::default(),
+                                    UiColor::new(vec![
+                                        (UiBase::id(), Color::WHITE.with_alpha(OPACITY_LEVEL_BLUR)),
+                                        (UiHover::id(), METRO_LIGHT_BLUE_COLOR.with_alpha(OPACITY_LEVEL_BLUR)),
+                                    ]),
+                                    UiHover::new().forward_speed(20.0).backward_speed(4.0),
+                                    ButtonFunction(i),
+                                ));
+                                button_e.with_children(|ui|{
+                                    ui.spawn((
+                                        Name::new("Text"),
+                                        UiLayoutTypeWindow::new().anchor_center().pack(),
+                                        UiColor::new(vec![
+                                            (UiBase::id(), Color::BLACK),
+                                            (UiHover::id(), Color::WHITE),
+                                        ]),
+                                        UiHover::new().forward_speed(20.0).backward_speed(4.0),
+                                        UiTextSize::from(Rh(80.)),
+                                        Text2d::new(text.to_string()),
+                                        TextFont {
+                                            font: asset_server.load(UI_FONT),
+                                            font_size: 96.,
+                                            ..default()
+                                        },
+
+                                    ));
+                                });
+                                button_e
+                                .observe(hover_set::<Pointer<Over>, true>)
+                                .observe(hover_set::<Pointer<Out>, false>)
+                                .observe(|click: Trigger<Pointer<Click>>, mut button_q: Query<&ButtonFunction>,mut change_settings_ev: EventWriter<ChangeSettingEvent>|{
+                                    match button_q.get_mut(click.target).unwrap().0{
+                                        0 =>{
+                                            change_settings_ev.send(ChangeSettingEvent);
+                                        }
+                                        _ =>{
+                                            //Сбросить до заводских
+                                        }
+                                    }
+                                });
+                            }
                             });
                         });
                     });
@@ -242,12 +328,22 @@ fn move_slider(
         .next();
     if slider_t.is_some() {
         let (parent_pos, dimension) = global_t.get(**slider_t.as_ref().unwrap().3).unwrap();
-        println!("Parent pos - {} {}, cursor - {} {} ", parent_pos.translation().x,parent_pos.translation().y,cursor_position.0.x,cursor_position.0.y);
-        println!("Dimension - {} {}", dimension.x,dimension.y);
+        println!(
+            "Parent pos - {} {}, cursor - {} {} ",
+            parent_pos.translation().x,
+            parent_pos.translation().y,
+            cursor_position.0.x,
+            cursor_position.0.y
+        );
+        println!("Dimension - {} {}", dimension.x, dimension.y);
         let mut difference = cursor_position.0.x - slider_t.as_ref().unwrap().1.translation().x;
-        if difference > 0. && parent_pos.translation().x + dimension.x / 2. - 15. < cursor_position.0.x{
+        if difference > 0.
+            && parent_pos.translation().x + dimension.x / 2. - 15. < cursor_position.0.x
+        {
             difference = 0.0;
-        }else if difference < 0. && parent_pos.translation().x - dimension.x / 2. + 15. > cursor_position.0.x{
+        } else if difference < 0.
+            && parent_pos.translation().x - dimension.x / 2. + 15. > cursor_position.0.x
+        {
             difference = 0.0;
         }
         if mouse.pressed(MouseButton::Left) {
